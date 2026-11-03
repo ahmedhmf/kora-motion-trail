@@ -38,14 +38,16 @@ export class YoloSegmentationService {
     // per-instance mask array. Run the model for each class separately.
     // COCO: 0 = person, 32 = sports ball.
     const playerResult = await model.predict(image, { classes: [0], conf: 0.15 });
-    const ballResult = await model.predict(image, { classes: [32], conf: 0.15 });
-
     const playerWidth = playerResult.width;
     const playerHeight = playerResult.height;
+    // Snapshot the first class overlay before running inference again: model
+    // implementations may reuse their underlying output buffers.
+    const playerOverlay = new Uint8Array(this.overlayForClass(playerResult, 0));
+    const ballResult = await model.predict(image, { classes: [32], conf: 0.15 });
+
     if (playerWidth !== ballResult.width || playerHeight !== ballResult.height) {
       throw new Error('YOLO class masks have different image dimensions.');
     }
-    const playerOverlay = this.overlayForClass(playerResult, 0);
     const ballOverlay = this.overlayForClass(ballResult, 32);
     const masks = buildClassifiedMaskData(
       playerOverlay, ballOverlay, playerWidth, playerHeight,
