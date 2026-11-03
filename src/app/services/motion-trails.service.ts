@@ -154,35 +154,31 @@ export class MotionTrailsService {
     ballMask?: HTMLCanvasElement | null,
     ballSettings?: MotionSettings,
   ): HTMLCanvasElement {
-    const output = this.renderLayer(image, mask, settings, true);
-    if (ballMask && ballSettings) {
-      const ballLayer = this.renderLayer(image, ballMask, ballSettings, false);
-      const ctx = output.getContext('2d');
-      if (!ctx) throw new Error('Could not composite ball motion trails.');
-      ctx.drawImage(ballLayer, 0, 0);
-    }
-    return output;
-  }
-
-  private renderLayer(
-    image: HTMLImageElement,
-    mask: HTMLCanvasElement,
-    settings: MotionSettings,
-    includeBackground: boolean,
-  ): HTMLCanvasElement {
-    const width = image.naturalWidth;
-    const height = image.naturalHeight;
-
+    const width = image.naturalWidth, height = image.naturalHeight;
     const output = document.createElement('canvas');
     output.width = width;
     output.height = height;
-
     const ctx = output.getContext('2d');
+    if (!ctx) throw new Error('Could not create artwork canvas.');
 
-    if (!ctx) {
-      throw new Error('Could not create artwork canvas.');
-    }
+    // Both subject trails stay behind the sharp, original player and ball.
+    ctx.drawImage(image, 0, 0, width, height);
+    const playerSubject = this.drawLayer(ctx, image, mask, settings);
+    const ballSubject = ballMask && ballSettings
+      ? this.drawLayer(ctx, image, ballMask, ballSettings) : null;
+    ctx.drawImage(playerSubject, 0, 0, width, height);
+    if (ballSubject) ctx.drawImage(ballSubject, 0, 0, width, height);
+    return output;
+  }
 
+  private drawLayer(
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    mask: HTMLCanvasElement,
+    settings: MotionSettings,
+  ): HTMLCanvasElement {
+    const width = image.naturalWidth;
+    const height = image.naturalHeight;
     const subject = this.getSubject(image, mask);
     const gradient = settings.trailColorMode === 'gradient';
     const primarySource = settings.trailColorMode === 'original'
@@ -222,9 +218,6 @@ export class MotionTrailsService {
         this.drawEcho(ctx, source, echo, alpha, 0, anchorX, anchorY);
       }
     };
-
-    // Original photograph as background.
-    if (includeBackground) ctx.drawImage(image, 0, 0, width, height);
 
     const intensity = Math.max(0, Math.min(1, settings.intensity / 100));
 
@@ -278,13 +271,7 @@ export class MotionTrailsService {
       drawTrail(echo, opacity, false);
     }
 
-    // -------------------------------------
-    // PASS 3: Sharp foreground
-    // -------------------------------------
-
-    ctx.drawImage(subject, 0, 0, width, height);
-
-    return output;
+    return subject;
   }
 
   private drawEcho(
