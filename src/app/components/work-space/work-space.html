@@ -20,21 +20,31 @@
           </div>
         </div>
       }
+      @if (editorStore.refiningBallMask()) {
+        <div role="status" class="mb-3 rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-3 text-sm text-cyan-100">
+          Ball mask refinement: paint directly over the original photo. Cyan shows the draft selection.
+          Apply or Cancel from the Subjects panel.
+        </div>
+      }
       @if (editorStore.playerMask()) {
         <div class="mb-3 space-y-2">
           <p class="text-xs font-medium text-zinc-300">Preview segmentation masks</p>
           <div class="flex flex-wrap gap-2">
-            <button type="button" (click)="selectMaskPreview('artwork')"
+            <button type="button" [disabled]="editorStore.refiningBallMask()"
+              (click)="selectMaskPreview('artwork')"
               class="rounded-lg border px-3 py-2 text-xs"
               [class]="maskPreview() === 'artwork' ? 'border-cyan-400 text-white' : 'border-zinc-700 text-zinc-300'">Artwork</button>
-            <button type="button" (click)="selectMaskPreview('player')"
+            <button type="button" [disabled]="editorStore.refiningBallMask()"
+              (click)="selectMaskPreview('player')"
               class="rounded-lg border px-3 py-2 text-xs"
               [class]="maskPreview() === 'player' ? 'border-cyan-400 text-white' : 'border-zinc-700 text-zinc-300'">Player mask</button>
-            <button type="button" (click)="selectMaskPreview('ball')"
-              [disabled]="!editorStore.ballMask()"
+            <button type="button" [disabled]="editorStore.refiningBallMask()"
+              (click)="selectMaskPreview('ball')"
+              [disabled]="!editorStore.ballMask() || editorStore.refiningBallMask()"
               class="rounded-lg border px-3 py-2 text-xs disabled:opacity-40"
               [class]="maskPreview() === 'ball' ? 'border-cyan-400 text-white' : 'border-zinc-700 text-zinc-300'">Ball mask</button>
-            <button type="button" (click)="selectMaskPreview('combined')"
+            <button type="button" [disabled]="editorStore.refiningBallMask()"
+              (click)="selectMaskPreview('combined')"
               class="rounded-lg border px-3 py-2 text-xs"
               [class]="maskPreview() === 'combined' ? 'border-cyan-400 text-white' : 'border-zinc-700 text-zinc-300'">Combined mask</button>
           </div>
@@ -45,12 +55,12 @@
       }
       @if (editorStore.playerMask()) {
         <div class="mb-3 flex flex-wrap gap-2">
-          <button type="button" (click)="toggleMotionHandles()"
+          <button type="button" [disabled]="editorStore.refiningBallMask()" (click)="toggleMotionHandles()"
             class="rounded-lg border px-3 py-2 text-xs"
             [class]="editingMotion() ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-zinc-700 text-zinc-300'">
             {{ editingMotion() ? 'Finish Path Editing' : 'Edit Motion Path' }}
           </button>
-          <button type="button" (click)="toggleBallSelection()"
+          <button type="button" [disabled]="editorStore.refiningBallMask()" (click)="toggleBallSelection()"
             class="rounded-lg border px-3 py-2 text-xs"
             [class]="selectingBall() ? 'border-amber-400 bg-amber-400/10 text-white' : 'border-zinc-700 text-zinc-300'">
             {{ selectingBall() ? 'Cancel Ball Selection' : editorStore.ballMask() ? 'Move Ball Selection' : 'Select Ball' }}
@@ -83,8 +93,14 @@
               [motionSettings]="editorStore.currentMotionSettings()"
               [ballSelection]="editorStore.ballSelection()"
               [selectedSubject]="editorStore.activeSubject()"
-              [selectingBall]="selectingBall()"
-              [editingMotion]="editingMotion()"
+              [selectingBall]="selectingBall() && !editorStore.refiningBallMask()"
+              [refiningBallMask]="editorStore.refiningBallMask()"
+              [ballMaskDraft]="editorStore.ballMaskDraft()"
+              [ballMaskRevision]="editorStore.ballMaskRevision()"
+              [ballBrushSize]="editorStore.ballBrushSize()"
+              [showBallMaskOverlay]="editorStore.showBallMaskOverlay()"
+              (ballMaskPaint)="onBallMaskPaint($event)"
+              [editingMotion]="editingMotion() && !editorStore.refiningBallMask()"
               (ballPicked)="onBallPicked($event)"
               (motionPathChanged)="onMotionPathChanged($event)"
               [showPlayerControls]="hasAnimationStarted()"
