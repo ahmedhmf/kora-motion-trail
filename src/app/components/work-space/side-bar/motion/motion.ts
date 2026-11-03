@@ -149,6 +149,20 @@ export class Motion {
     this.updateEffect({ echoScale: Number((event.target as HTMLInputElement).value) });
   }
 
+  updatePathCurve(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (Number.isFinite(value)) {
+      this.updateEffect({ pathCurve: Math.max(-100, Math.min(100, value)) });
+    }
+  }
+
+  updateEchoRotation(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (Number.isFinite(value)) {
+      this.updateEffect({ echoRotation: Math.max(-45, Math.min(45, value)) });
+    }
+  }
+
   resetAdvancedMotion(): void {
     this.updateEffect({
       trailDistance: DEFAULT_MOTION_SETTINGS.trailDistance,
@@ -156,6 +170,8 @@ export class Motion {
       directionAngle: DIRECTION_ANGLES[this.editorStore.motionSettings().direction],
       trailFadeCurve: DEFAULT_MOTION_SETTINGS.trailFadeCurve,
       echoScale: DEFAULT_MOTION_SETTINGS.echoScale,
+      pathCurve: DEFAULT_MOTION_SETTINGS.pathCurve,
+      echoRotation: DEFAULT_MOTION_SETTINGS.echoRotation,
     });
   }
 

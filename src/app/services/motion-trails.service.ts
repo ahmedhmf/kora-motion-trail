@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 import { MotionSettings } from '../models/motion-settings.model';
-import { getEchoLayout } from './advanced-motion-layout';
+import { EchoLayout, getEchoLayout } from './advanced-motion-layout';
 
 @Injectable({
   providedIn: 'root',
@@ -160,20 +160,12 @@ export class MotionTrailsService {
       // weaken the repeated silhouettes.
       const opacity = Math.min(1, echoStrength * visibility * fade);
 
-      ctx.save();
       if (glow && glowIntensity > 0) {
-        ctx.globalAlpha = Math.min(1, opacity * glowIntensity);
-        ctx.drawImage(
-          glow.canvas,
-          echo.x - glow.padding * echo.scale,
-          echo.y - glow.padding * echo.scale,
-          glow.canvas.width * echo.scale,
-          glow.canvas.height * echo.scale,
-        );
+        this.drawEcho(ctx, glow.canvas, echo, Math.min(1, opacity * glowIntensity),
+          glow.padding, this.subjectAnchor?.x ?? width / 2, this.subjectAnchor?.y ?? height / 2);
       }
-      ctx.globalAlpha = opacity;
-      ctx.drawImage(trailSource, echo.x, echo.y, echo.width, echo.height);
-      ctx.restore();
+      this.drawEcho(ctx, trailSource, echo, opacity, 0,
+        this.subjectAnchor?.x ?? width / 2, this.subjectAnchor?.y ?? height / 2);
     }
 
     // -------------------------------------
@@ -181,7 +173,10 @@ export class MotionTrailsService {
     // -------------------------------------
 
     for (let i = layers; i >= 1; i--) {
-      const echo = getEchoLayout(i, layers, width, height, settings);
+      const echo = getEchoLayout(
+        i, layers, width, height, settings,
+        this.subjectAnchor?.x, this.subjectAnchor?.y,
+      );
 
       // Gentle fading keeps distant echoes recognizable.
       const fade = echo.secondaryFade;
@@ -189,13 +184,8 @@ export class MotionTrailsService {
       // User controls how strong the repeated silhouettes are.
       const opacity = baseTrailStrength * echoStrength * fade * 0.012;
 
-      ctx.save();
-
-      ctx.globalAlpha = opacity;
-
-      ctx.drawImage(trailSource, echo.x, echo.y, echo.width, echo.height);
-
-      ctx.restore();
+      this.drawEcho(ctx, trailSource, echo, opacity, 0,
+        this.subjectAnchor?.x ?? width / 2, this.subjectAnchor?.y ?? height / 2);
     }
 
     // -------------------------------------
@@ -205,6 +195,34 @@ export class MotionTrailsService {
     ctx.drawImage(subject, 0, 0, width, height);
 
     return output;
+  }
+
+  private drawEcho(
+    ctx: CanvasRenderingContext2D,
+    source: HTMLCanvasElement,
+    echo: EchoLayout,
+    opacity: number,
+    padding: number,
+    anchorX: number,
+    anchorY: number,
+  ): void {
+    if (opacity <= 0) return;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+
+    // Rotate the whole masked silhouette (and glow) around the same detected
+    // subject centre. A zero angle preserves the previous drawing geometry.
+    ctx.translate(echo.pivotX, echo.pivotY);
+    ctx.rotate(echo.rotationRadians);
+    ctx.drawImage(
+      source,
+      -(anchorX + padding) * echo.scale,
+      -(anchorY + padding) * echo.scale,
+      source.width * echo.scale,
+      source.height * echo.scale,
+    );
+    ctx.restore();
   }
 
   private extractSubject(image: HTMLImageElement, mask: HTMLCanvasElement): HTMLCanvasElement {

@@ -31,6 +31,8 @@ export interface MotionSettings {
   directionAngle: number; // 0–360 degrees
   trailFadeCurve: TrailFadeCurve;
   echoScale: number; // distant echo scale: 50–150%
+  pathCurve: number; // -100..100: sideways bend; 0 = straight
+  echoRotation: number; // -45..45 degrees at the farthest echo
 }
 
 export const DEFAULT_MOTION_SETTINGS: MotionSettings = {
@@ -51,4 +53,6 @@ export const DEFAULT_MOTION_SETTINGS: MotionSettings = {
   directionAngle: 180,
   trailFadeCurve: 'classic',
   echoScale: 100,
+  pathCurve: 0,
+  echoRotation: 0,
 };
