@@ -30,6 +30,49 @@
   } @else {
     <p class="text-xs text-zinc-400">No ball detected. Use “Select Ball” above the canvas to create its mask, then edit its trails independently.</p>
   }
+
+  @if (editorStore.ballMask()) {
+    <div class="space-y-3 rounded-lg border border-zinc-700 bg-zinc-950/50 p-3">
+      <h4 class="text-sm font-semibold text-white">Ball Mask Refinement</h4>
+      @if (!editorStore.refiningBallMask()) {
+        <button type="button" class="min-h-11 w-full rounded-lg border border-cyan-600 px-3 py-2 text-sm text-cyan-200 hover:bg-cyan-500/10"
+          (click)="startBallRefinement()">Refine Ball Mask</button>
+        <p class="text-xs text-zinc-400">Correct the selected ball boundary using Add and Erase brushes.</p>
+      } @else {
+        <p class="text-xs text-cyan-300">Paint on the photo. Changes are temporary until you apply them.</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" class="rounded-lg border px-3 py-2 text-sm"
+            [class]="editorStore.ballBrushMode() === 'add' ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-zinc-700 text-zinc-300'"
+            [attr.aria-pressed]="editorStore.ballBrushMode() === 'add'"
+            (click)="setBallBrushMode('add')">Add to ball</button>
+          <button type="button" class="rounded-lg border px-3 py-2 text-sm"
+            [class]="editorStore.ballBrushMode() === 'erase' ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-zinc-700 text-zinc-300'"
+            [attr.aria-pressed]="editorStore.ballBrushMode() === 'erase'"
+            (click)="setBallBrushMode('erase')">Erase</button>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label for="ball-refine-brush" class="text-xs text-zinc-300">Brush diameter</label>
+            <span class="text-xs text-cyan-400">{{ editorStore.ballBrushSize() }}px</span>
+          </div>
+          <input id="ball-refine-brush" type="range" min="4" max="100" step="1"
+            class="w-full accent-cyan-400"
+            [value]="editorStore.ballBrushSize()" (input)="updateBallBrushSize($event)" />
+        </div>
+        <label class="flex items-center gap-2 text-sm text-zinc-300">
+          <input type="checkbox" class="accent-cyan-400"
+            [checked]="editorStore.showBallMaskOverlay()" (change)="toggleBallOverlay($event)" />
+          Show cyan mask overlay
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" class="min-h-11 rounded-lg border border-zinc-600 px-3 py-2 text-sm text-zinc-200"
+            (click)="cancelBallRefinement()">Cancel</button>
+          <button type="button" class="min-h-11 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-zinc-950"
+            (click)="applyBallRefinement()">Apply changes</button>
+        </div>
+      }
+    </div>
+  }
 </div>
 </app-collapsible-section>
 <app-collapsible-section section="presets" title="Presets" icon="🎨">
