@@ -104,6 +104,13 @@ export const EditorStore = signalStore(
         patchState(store, {
           motionSettings: { ...DEFAULT_MOTION_SETTINGS },
         });
+        const uploaded = store.uploadedImage();
+        const mask = store.playerMask();
+        if (uploaded && mask) {
+          patchState(store, {
+            processedImage: motionTrailsService.render(uploaded.image, mask, store.motionSettings()),
+          });
+        }
       },
 
       clearImage(): void {
