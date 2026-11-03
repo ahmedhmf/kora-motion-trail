@@ -1,0 +1,49 @@
+        <app-collapsible-section section="mask" title="Mask" icon="🎭">
+          <h3 class="text-sm font-semibold">Player Detection</h3>
+
+          <p class="mt-2 text-xs leading-5 text-zinc-400">
+            Automatically detect the footballer and generate a segmentation mask.
+          </p>
+
+          <button
+            type="button"
+            class="mt-4 min-h-11 w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
+            [disabled]="
+              !editorStore.hasImage() || editorStore.isDetectingPlayer() || editorStore.isLoading()
+            "
+            (click)="detectPlayer()"
+          >
+            @if (editorStore.isDetectingPlayer()) {
+              Detecting Player...
+            } @else if (editorStore.playerMask()) {
+              Detect Again
+            } @else {
+              Auto Detect Player
+            }
+          </button>
+
+          <!-- DETECTION STATUS -->
+          @if (editorStore.playerMask()) {
+            <p class="mt-3 text-xs text-emerald-400">Player mask generated successfully.</p>
+          }
+
+          <!-- DETECTION ERROR -->
+          @if (editorStore.detectionError()) {
+            <p role="alert" class="mt-3 text-xs leading-5 text-red-400">
+              {{ editorStore.detectionError() }}
+            </p>
+          }
+
+          <!-- MASK ACTIONS -->
+          @if (editorStore.playerMask()) {
+            <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              <button
+                type="button"
+                class="min-h-11 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+                (click)="toggleMaskPreview()"
+              >
+                {{ showMask() ? 'Show Original' : 'Show Player Mask' }}
+              </button>
+            </div>
+          }
+        </app-collapsible-section>

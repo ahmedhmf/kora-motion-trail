@@ -1,0 +1,102 @@
+    <!-- WORKSPACE -->
+    <section class="min-w-0">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold">Workspace</h2>
+
+        <span class="text-xs text-zinc-500"> Motion Trails </span>
+      </div>
+      @if (editorStore.isDetectingPlayer()) {
+        <div
+          class="flex items-center gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-4"
+        >
+          <div
+            class="h-5 w-5 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent"
+          ></div>
+
+          <div>
+            <p class="text-sm font-medium text-cyan-300">Detecting player and football...</p>
+
+            <p class="text-xs text-zinc-400">AI is preparing your segmentation mask.</p>
+          </div>
+        </div>
+      }
+      <div
+        class="flex min-h-[320px] min-w-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900/70 p-3 sm:min-h-[450px] sm:p-5"
+      >
+        @if (editorStore.uploadedImage(); as uploaded) {
+          @if (isEditingMask() && editorStore.playerMask()) {
+            <app-mask-editor
+              class="block w-full min-w-0"
+              [image]="uploaded"
+              [mask]="editorStore.playerMask()"
+            />
+          } @else {
+            <app-artwork-canvas
+              class="block w-full min-w-0"
+              [image]="uploaded"
+              [mask]="editorStore.playerMask()"
+              [showMask]="showMask()"
+              [processedImage]="editorStore.processedImage()"
+              [animationFrame]="animationFrame()"
+              [showPlayerControls]="hasAnimationStarted()"
+              [isPlaying]="isPlaying()"
+              [progress]="animationProgress()"
+              [durationSeconds]="videoSettings().durationSeconds"
+              (playRequested)="playAnimation()"
+              (pauseRequested)="pauseAnimation()"
+              (replayRequested)="replayAnimation()"
+              (seekRequested)="seekAnimation($event)"
+            />
+          }
+        } @else {
+          <div class="max-w-sm text-center">
+            <h3 class="text-lg font-semibold">Your creative workspace</h3>
+
+            <p class="mt-2 text-sm leading-6 text-zinc-400">
+              Upload a football photograph to start creating experimental digital art.
+            </p>
+
+            <label
+              for="imageUpload"
+              class="mt-6 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-3 font-medium text-zinc-950"
+            >
+              Upload Image
+            </label>
+          </div>
+        }
+      </div>
+
+      <input
+        id="imageUpload"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        class="sr-only"
+        [disabled]="editorStore.isLoading() || editorStore.isDetectingPlayer()"
+        (change)="onFileSelected($event)"
+      />
+
+      @if (editorStore.isLoading()) {
+        <p role="status" class="mt-3 text-sm text-zinc-400">Loading image...</p>
+      }
+
+      @if (editorStore.error()) {
+        <p role="alert" class="mt-3 text-sm text-red-400">
+          {{ editorStore.error() }}
+        </p>
+      }
+
+      @if (editorStore.uploadedImage(); as uploaded) {
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <label
+            for="imageUpload"
+            class="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-700 px-4 py-2 text-sm"
+            [class.cursor-pointer]="!editorStore.isLoading() && !editorStore.isDetectingPlayer()"
+            [class.opacity-40]="editorStore.isLoading() || editorStore.isDetectingPlayer()"
+          >
+            Replace Image
+          </label>
+        </div>
+      }
+    </section>
+
+    <app-side-bar (stopAnimation)="stopAnimation()" (playAnimation)="playAnimation()" [videoSettings]="videoSettings()" (updateVideoSettings)="onUpdateVideoSettings($event)"></app-side-bar>

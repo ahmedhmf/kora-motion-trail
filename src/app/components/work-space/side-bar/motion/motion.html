@@ -1,0 +1,140 @@
+<app-collapsible-section section="motion" title="Motion Trails" icon="✨">
+  <div class="mb-3 flex items-center justify-between gap-2">
+    <label for="intensity" class="text-sm"> Motion Intensity </label>
+
+    <span class="text-sm text-zinc-400"> {{ editorStore.motionSettings().intensity }}% </span>
+  </div>
+
+  <input
+    id="intensity"
+    type="range"
+    min="0"
+    max="100"
+    [value]="editorStore.motionSettings().intensity"
+    (input)="
+      editorStore.updateMotionSettings({
+        intensity: +$any($event.target).value,
+      })
+    "
+    class="w-full accent-white"
+  />
+
+  <!-- SUBJECT PRESERVATION -->
+  <div class="mb-3 flex items-center justify-between gap-2">
+    <label for="preservation" class="text-sm"> Subject Preservation </label>
+
+    <span class="text-sm text-zinc-400"> {{ editorStore.motionSettings().preservation }}% </span>
+  </div>
+
+  <input
+    id="preservation"
+    type="range"
+    min="0"
+    max="100"
+    [value]="editorStore.motionSettings().preservation"
+    (input)="
+      editorStore.updateMotionSettings({
+        preservation: +$any($event.target).value,
+      })
+    "
+    class="w-full accent-white"
+  />
+
+  <!-- MOTION LAYERS -->
+  <div class="mb-3 flex items-center justify-between gap-2">
+    <label for="layers" class="text-sm"> Motion Layers </label>
+
+    <span class="text-sm text-zinc-400">
+      {{ editorStore.motionSettings().layers }}
+    </span>
+  </div>
+
+  <input
+    id="layers"
+    type="range"
+    min="2"
+    max="20"
+    step="1"
+    [value]="editorStore.motionSettings().layers"
+    (input)="
+      editorStore.updateMotionSettings({
+        layers: +$any($event.target).value,
+      })
+    "
+    class="w-full accent-white"
+  />
+
+  <div class="space-y-2">
+    <div class="flex items-center justify-between">
+      <label for="trail-strength" class="text-sm font-medium text-zinc-300"> Trail Strength </label>
+
+      <span class="text-sm font-semibold text-cyan-400">
+        {{ editorStore.motionSettings().trailStrength }}%
+      </span>
+    </div>
+
+    <input
+      id="trail-strength"
+      type="range"
+      min="0"
+      max="100"
+      step="1"
+      class="w-full cursor-pointer accent-cyan-400"
+      [value]="editorStore.motionSettings().trailStrength"
+      (input)="updateTrailStrength($event)"
+    />
+
+    <div class="flex justify-between text-xs text-zinc-500">
+      <span>Subtle</span>
+      <span>Strong echoes</span>
+    </div>
+  </div>
+
+  <div class="space-y-2">
+    <div class="flex items-center justify-between">
+      <label class="text-sm font-medium text-zinc-300"> Trail Visibility </label>
+
+      <span class="text-sm text-cyan-400"> {{ editorStore.motionSettings().visibility }}% </span>
+    </div>
+
+    <input
+      type="range"
+      min="0"
+      max="100"
+      step="1"
+      class="w-full accent-cyan-400"
+      [value]="editorStore.motionSettings().visibility"
+      (input)="updateTrailVisibility($event)"
+    />
+
+    <p class="text-xs text-zinc-500">Control how visible the motion trails appear.</p>
+  </div>
+
+  <!-- MOTION DIRECTION -->
+  <label for="direction" class="mb-3 block text-sm"> Motion Direction </label>
+
+  <select
+    id="direction"
+    class="min-h-11 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm text-white"
+    [value]="editorStore.motionSettings().direction"
+    (change)="
+      editorStore.updateMotionSettings({
+        direction: $any($event.target).value,
+      })
+    "
+  >
+    <option value="left">Left</option>
+    <option value="right">Right</option>
+    <option value="up">Up</option>
+    <option value="down">Down</option>
+  </select>
+
+  <!-- RESET SETTINGS -->
+  <button
+    type="button"
+    class="min-h-11 w-full rounded-xl border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+    (click)="editorStore.resetMotionSettings()"
+  >
+    Reset Motion Settings
+  </button>
+</app-collapsible-section>

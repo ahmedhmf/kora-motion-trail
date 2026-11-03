@@ -1,0 +1,13 @@
+<aside class="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 lg:self-start">
+  <div class="mb-6">
+    <h2 class="text-lg font-semibold">Effect Settings</h2>
+
+    <p class="mt-1 text-sm text-zinc-400">Customize your artwork</p>
+  </div>
+
+  <app-mask></app-mask>
+  <app-motion (stopAnimation)="onStopAnimation()"></app-motion>
+  <app-animation (stopAnimation)="onStopAnimation()" (playAnimation)="onPlayAnimation()"></app-animation>
+  <app-export [videoSettings]="videoSettings()" (updateVideoSettings)="onUpdateVideoSettings($event)" (stopAnimation)="onStopAnimation()"></app-export>
+  <div class="space-y-7"></div>
+</aside>

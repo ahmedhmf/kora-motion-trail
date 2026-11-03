@@ -1,0 +1,83 @@
+ <app-collapsible-section section="export" title="Export" icon="🔗">
+          <button
+            type="button"
+            class="min-h-12 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+            [disabled]="!editorStore.processedImage()"
+            (click)="exportArtwork()"
+          >
+            Export Artwork (PNG)
+          </button>
+          <div class="mt-5 space-y-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            <h3 class="text-base font-semibold text-white">Export Video</h3>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label class="mb-2 block text-sm text-zinc-300"> Format </label>
+
+                <select
+                  class="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-white"
+                  [value]="videoSettings().format"
+                  (change)="updateVideoFormat($event)"
+                >
+                  <option value="webm">WebM</option>
+                  <option value="mp4">MP4</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="mb-2 block text-sm text-zinc-300"> Resolution </label>
+
+                <select
+                  class="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-white"
+                  [value]="videoSettings().resolution"
+                  (change)="updateVideoResolution($event)"
+                >
+                  <option value="720p">720p</option>
+                  <option value="1080p">1080p</option>
+                  <option value="4k">4K</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="mb-2 block text-sm text-zinc-300"> Frame Rate </label>
+
+                <select
+                  class="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-white"
+                  [value]="videoSettings().fps"
+                  (change)="updateVideoFps($event)"
+                >
+                  <option [value]="24">24 FPS</option>
+                  <option [value]="30">30 FPS</option>
+                  <option [value]="60">60 FPS</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-zinc-950 hover:bg-cyan-400 disabled:opacity-40"
+              [disabled]="
+                isExporting() || !editorStore.uploadedImage() || !editorStore.playerMask()
+              "
+              (click)="exportVideo()"
+            >
+              @if (isExporting()) {
+                Exporting... {{ exportProgress() }}%
+              } @else {
+                Export Video
+              }
+            </button>
+
+            @if (isExporting()) {
+              <div class="h-2 overflow-hidden rounded-full bg-zinc-800">
+                <div class="h-full bg-cyan-400" [style.width.%]="exportProgress()"></div>
+              </div>
+            }
+
+            @if (exportError()) {
+              <p class="text-sm text-red-400">
+                {{ exportError() }}
+              </p>
+            }
+          </div>
+        </app-collapsible-section>

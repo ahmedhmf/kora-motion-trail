@@ -1,12 +1,13 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
+import { EditorStore } from './stores/editor.store';
+import { MotionAnimationService } from './services/motion-animation.service';
+import { WorkSpace } from './components/work-space/work-space';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [WorkSpace],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrl: './app.css',
 })
 export class App {
-  protected readonly title = signal('kora-motion-trails');
 }

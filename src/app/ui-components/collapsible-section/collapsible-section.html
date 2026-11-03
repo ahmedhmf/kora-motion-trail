@@ -1,0 +1,45 @@
+<section
+  class="overflow-hidden rounded-xl
+         border border-zinc-800 bg-zinc-900"
+>
+  <!-- Clickable header -->
+  <button
+    type="button"
+    class="flex w-full items-center justify-between
+           px-4 py-4 text-left
+           hover:bg-zinc-800/60
+           focus-visible:outline-2
+           focus-visible:outline-cyan-400"
+    [attr.aria-expanded]="collapsibleSectionStore.isSectionOpen(section())"
+    aria-controls="motion-tools-content"
+    (click)="collapsibleSectionStore.toggleSection(section())"
+  >
+    <div class="flex items-center gap-3">
+      <span class="text-lg">{{ icon() }}</span>
+
+      <span class="font-semibold text-white">
+        {{ title() }}
+      </span>
+    </div>
+
+    <svg
+      class="h-5 w-5 text-zinc-400
+             transition-transform duration-200"
+      [class.rotate-180]="collapsibleSectionStore.isSectionOpen(section())"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  </button>
+  @if (collapsibleSectionStore.isSectionOpen(section())) {
+    <div
+      class="space-y-5 border-t border-zinc-800 p-4"
+    >
+      <ng-content></ng-content>
+    </div>
+  }
+</section>

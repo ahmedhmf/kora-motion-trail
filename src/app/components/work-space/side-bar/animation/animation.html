@@ -1,0 +1,41 @@
+        <app-collapsible-section icon="🎥" title="Animation" section="animation">
+          <div class="mt-4 space-y-4">
+            <div>
+              <label class="mb-2 block text-sm text-zinc-300"> Animation Style </label>
+
+              <select
+                class="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-white"
+                [value]="videoSettings().animationStyle"
+                (change)="updateAnimationStyle($event)"
+              >
+                <option value="reveal">Trail Reveal</option>
+                <option value="pulse">Pulse</option>
+                <option value="loop">Seamless Loop</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="mb-2 block text-sm text-zinc-300"> Duration </label>
+
+              <select
+                class="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-white"
+                [value]="videoSettings().durationSeconds"
+                (change)="updateVideoDuration($event)"
+              >
+                <option [value]="3">3 seconds</option>
+                <option [value]="5">5 seconds</option>
+                <option [value]="10">10 seconds</option>
+                <option [value]="15">15 seconds</option>
+              </select>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-zinc-950 disabled:opacity-40"
+            [disabled]="isPlaying() || !editorStore.uploadedImage() || !editorStore.playerMask()"
+            (click)="playAnimation.emit()"
+          >
+            Play
+          </button>
+        </app-collapsible-section>
