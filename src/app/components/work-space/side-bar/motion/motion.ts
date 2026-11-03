@@ -26,6 +26,31 @@ export class Motion {
     this.editorStore.setActiveSubject(subject);
   }
 
+  startBallRefinement(): void {
+    this.stopAnimation.emit();
+    this.editorStore.startBallMaskRefinement();
+  }
+
+  cancelBallRefinement(): void {
+    this.editorStore.cancelBallMaskRefinement();
+  }
+
+  applyBallRefinement(): void {
+    this.editorStore.applyBallMaskRefinement();
+  }
+
+  setBallBrushMode(mode: 'add' | 'erase'): void {
+    this.editorStore.setBallBrushMode(mode);
+  }
+
+  updateBallBrushSize(event: Event): void {
+    this.editorStore.setBallBrushSize(Number((event.target as HTMLInputElement).value));
+  }
+
+  toggleBallOverlay(event: Event): void {
+    this.editorStore.setBallMaskOverlayVisible((event.target as HTMLInputElement).checked);
+  }
+
   updateBallRadius(event: Event): void {
     const radius = Number((event.target as HTMLInputElement).value);
     if (!Number.isFinite(radius)) return;
