@@ -198,7 +198,7 @@ export class Export {
     try {
       await this.videoExportService.exportVideo(
         uploaded.image,
-        mask,
+        this.editorStore.playerOnlyMask() ?? mask,
         this.editorStore.motionSettings(),
         this.videoSettings(),
         (progress) => {
