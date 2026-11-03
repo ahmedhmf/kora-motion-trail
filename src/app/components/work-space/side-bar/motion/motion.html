@@ -1,4 +1,29 @@
 <app-collapsible-section section="motion" title="Motion Trails" icon="✨">
+  <div class="mb-6 space-y-3 rounded-xl border border-zinc-700 bg-zinc-900/80 p-3">
+    <div class="flex items-center justify-between gap-2">
+      <h3 class="text-sm font-semibold text-white">Motion Presets</h3>
+      <span class="text-xs text-cyan-400">
+        {{ activePreset() ? 'Preset selected' : 'Custom' }}
+      </span>
+    </div>
+    <p class="text-xs text-zinc-400">
+      Choose a starting style, then fine-tune any setting below.
+    </p>
+    <div class="grid grid-cols-1 gap-2">
+      @for (preset of presets; track preset.id) {
+        <button
+          type="button"
+          class="w-full rounded-lg border p-3 text-left transition-colors hover:bg-zinc-800"
+          [class]="activePreset() === preset.id ? 'border-cyan-400 bg-cyan-400/10' : 'border-zinc-700'"
+          [attr.aria-pressed]="activePreset() === preset.id"
+          (click)="applyPreset(preset.id)"
+        >
+          <span class="block text-sm font-semibold text-white">{{ preset.label }}</span>
+          <span class="mt-1 block text-xs text-zinc-400">{{ preset.description }}</span>
+        </button>
+      }
+    </div>
+  </div>
   <div class="mb-3 flex items-center justify-between gap-2">
     <label for="intensity" class="text-sm"> Motion Intensity </label>
 
@@ -11,11 +36,7 @@
     min="0"
     max="100"
     [value]="editorStore.motionSettings().intensity"
-    (input)="
-      editorStore.updateMotionSettings({
-        intensity: +$any($event.target).value,
-      })
-    "
+    (input)="updateIntensity($event)"
     class="w-full accent-white"
   />
 
@@ -32,11 +53,7 @@
     min="0"
     max="100"
     [value]="editorStore.motionSettings().preservation"
-    (input)="
-      editorStore.updateMotionSettings({
-        preservation: +$any($event.target).value,
-      })
-    "
+    (input)="updatePreservation($event)"
     class="w-full accent-white"
   />
 
@@ -56,11 +73,7 @@
     max="20"
     step="1"
     [value]="editorStore.motionSettings().layers"
-    (input)="
-      editorStore.updateMotionSettings({
-        layers: +$any($event.target).value,
-      })
-    "
+    (input)="updateLayers($event)"
     class="w-full accent-white"
   />
 
@@ -117,11 +130,7 @@
     id="direction"
     class="min-h-11 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm text-white"
     [value]="editorStore.motionSettings().direction"
-    (change)="
-      editorStore.updateMotionSettings({
-        direction: $any($event.target).value,
-      })
-    "
+    (change)="updateDirection($event)"
   >
     <option value="left">Left</option>
     <option value="right">Right</option>
