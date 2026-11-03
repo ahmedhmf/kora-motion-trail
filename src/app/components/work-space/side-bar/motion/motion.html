@@ -11,6 +11,19 @@
       [disabled]="!editorStore.ballMask()"
       (click)="selectSubject('ball')">Ball</button>
   </div>
+  @if (editorStore.detectedBallMask() && !editorStore.ballSelection()) {
+    <div class="space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <label for="detected-ball-size" class="text-xs text-zinc-300">Detected Ball Size</label>
+        <span class="text-xs text-cyan-400">{{ editorStore.ballMaskScale() }}%</span>
+      </div>
+      <input id="detected-ball-size" type="range" min="50" max="250" step="5"
+        class="w-full accent-cyan-400"
+        [value]="editorStore.ballMaskScale()"
+        (input)="updateDetectedBallScale($event)" />
+      <p class="text-xs text-zinc-400">Increase to recover more of a small ball mask. 100% restores YOLO's original size. Check Ball mask preview to avoid including the background.</p>
+    </div>
+  }
   @if (editorStore.ballSelection(); as ball) {
     <div class="space-y-2">
       <div class="flex items-center justify-between">
