@@ -53,6 +53,8 @@ function validSettings(value: unknown): value is MotionSettings {
     ['trailDistance', 0, 200],
     ['directionAngle', 0, 360],
     ['echoScale', 50, 150],
+    ['pathCurve', -100, 100],
+    ['echoRotation', -45, 45],
   ];
   if (!advancedRanges.every(([key, min, max]) =>
     typeof settings[key] === 'number' && Number.isFinite(settings[key]) &&
