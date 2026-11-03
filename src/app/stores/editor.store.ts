@@ -139,6 +139,11 @@ export const EditorStore = signalStore(
           ballSelection: selection,
           ballMask: separated.ball,
           playerOnlyMask: separated.player,
+          // First separation preserves the existing appearance. Moving the
+          // selection later retains the ball's independently edited settings.
+          ballMotionSettings: store.ballSelection()
+            ? store.ballMotionSettings()
+            : { ...store.motionSettings() },
           activeSubject: 'ball',
         });
         this.applyMotionTrails();
