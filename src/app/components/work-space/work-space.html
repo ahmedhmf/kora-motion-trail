@@ -76,7 +76,7 @@
             <app-artwork-canvas
               class="block w-full min-w-0"
               [image]="uploaded"
-              [mask]="previewMask() ?? editorStore.playerOnlyMask() ?? editorStore.playerMask()"
+              [mask]="maskPreview() === 'artwork' ? (editorStore.playerOnlyMask() ?? editorStore.playerMask()) : previewMask()"
               [showMask]="maskPreview() !== 'artwork'"
               [processedImage]="editorStore.processedImage()"
               [animationFrame]="animationFrame()"
