@@ -299,12 +299,13 @@
       >
         <option value="original">Original player colors</option>
         <option value="solid">Custom solid color</option>
+        <option value="gradient">Two-color gradient (near to far)</option>
       </select>
     </div>
 
-    @if (editorStore.motionSettings().trailColorMode === 'solid') {
+    @if (editorStore.motionSettings().trailColorMode !== 'original') {
       <div class="flex items-center justify-between gap-3">
-        <label for="trail-color" class="text-sm text-zinc-300">Echo Color</label>
+        <label for="trail-color" class="text-sm text-zinc-300">{{ editorStore.motionSettings().trailColorMode === 'gradient' ? 'Near Echo Color' : 'Echo Color' }}</label>
         <div class="flex items-center gap-2">
           <input
             id="trail-color"
@@ -316,6 +317,32 @@
           <span class="text-xs text-zinc-400">{{ editorStore.motionSettings().trailColor }}</span>
         </div>
       </div>
+    }
+
+    @if (editorStore.motionSettings().trailColorMode === 'gradient') {
+      <div class="flex items-center justify-between gap-3">
+        <label for="trail-end-color" class="text-sm text-zinc-300">Far Echo Color</label>
+        <div class="flex items-center gap-2">
+          <input id="trail-end-color" type="color"
+            class="h-10 w-12 cursor-pointer rounded border border-zinc-700 bg-zinc-900"
+            [value]="editorStore.motionSettings().trailEndColor"
+            (input)="updateTrailEndColor($event)" />
+          <span class="text-xs text-zinc-400">{{ editorStore.motionSettings().trailEndColor }}</span>
+        </div>
+      </div>
+      <p class="text-xs text-zinc-500">Blend colors smoothly from nearby echoes to distant silhouettes.</p>
+    }
+
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <label for="directional-blur" class="text-sm text-zinc-300">Directional Motion Blur</label>
+        <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().directionalBlur }} px</span>
+      </div>
+      <input id="directional-blur" type="range" min="0" max="30" step="2"
+        class="w-full accent-cyan-400"
+        [value]="editorStore.motionSettings().directionalBlur"
+        (input)="updateDirectionalBlur($event)" />
+      <p class="text-xs text-zinc-500">Adds motion streaks behind the echoes without blurring the main player.</p>
     }
 
     <label class="flex cursor-pointer items-center gap-3 text-sm text-zinc-300">

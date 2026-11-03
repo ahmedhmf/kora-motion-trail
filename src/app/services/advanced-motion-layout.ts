@@ -8,6 +8,7 @@ const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
 
 export interface EchoLayout {
+  progress: number;
   x: number;
   y: number;
   width: number;
@@ -55,6 +56,7 @@ export function getEchoLayout(
     progress * Math.PI / 180;
 
   return {
+    progress,
     x: anchorX * (1 - scale) + travelX,
     y: anchorY * (1 - scale) + travelY,
     width: drawWidth,
@@ -86,4 +88,10 @@ export function getTrailFade(progress: number, curve: TrailFadeCurve): number {
     default:
       return 1 - t * 0.35;
   }
+}
+
+/** Gradient contribution from near to far silhouettes, independent of frame rate. */
+export function getGradientWeights(progress: number): { near: number; far: number } {
+  const far = Math.max(0, Math.min(1, Number.isFinite(progress) ? progress : 0));
+  return { near: 1 - far, far };
 }
