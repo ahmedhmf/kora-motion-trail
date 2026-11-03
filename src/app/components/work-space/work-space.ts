@@ -36,16 +36,42 @@ export class WorkSpace {
   }
 
   selectMaskPreview(mode: 'artwork' | 'player' | 'ball' | 'combined'): void {
+    if (this.editorStore.refiningBallMask()) return;
     this.stopAnimation();
     this.selectingBall.set(false);
     this.editingMotion.set(false);
     this.maskPreview.set(mode);
   }
 
+  startBallRefinement(): void {
+    this.stopAnimation();
+    this.selectingBall.set(false);
+    this.editingMotion.set(false);
+    this.maskPreview.set('artwork');
+    this.editorStore.startBallMaskRefinement();
+  }
+
+  cancelBallRefinement(): void {
+    this.editorStore.cancelBallMaskRefinement();
+  }
+
+  applyBallRefinement(): void {
+    this.editorStore.applyBallMaskRefinement();
+    this.maskPreview.set('artwork');
+  }
+
+  onBallMaskPaint(stroke: {
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  }): void {
+    this.editorStore.paintBallMask(stroke.from, stroke.to);
+  }
+
   readonly selectingBall = signal(false);
   readonly editingMotion = signal(false);
 
   toggleBallSelection(): void {
+    if (this.editorStore.refiningBallMask()) return;
     this.stopAnimation();
     this.selectingBall.update((value) => !value);
     this.editingMotion.set(false);
@@ -53,6 +79,7 @@ export class WorkSpace {
   }
 
   toggleMotionHandles(): void {
+    if (this.editorStore.refiningBallMask()) return;
     this.stopAnimation();
     this.editingMotion.update((value) => !value);
     this.selectingBall.set(false);
@@ -113,6 +140,7 @@ export class WorkSpace {
   }
 
   playAnimation(): void {
+    if (this.editorStore.refiningBallMask()) return;
     const uploaded = this.editorStore.uploadedImage();
     const mask = this.editorStore.playerMask();
 
@@ -181,6 +209,7 @@ export class WorkSpace {
   }
 
   seekAnimation(progress: number): void {
+    if (this.editorStore.refiningBallMask()) return;
     const clamped = Math.max(0, Math.min(1, progress));
 
     this.pauseAnimation();
