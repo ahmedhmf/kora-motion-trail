@@ -16,7 +16,10 @@ export interface EchoLayout {
   scale: number;
   fade: number;
   secondaryFade: number;
-}
+  pivotX: number;
+  pivotY: number;
+  rotationRadians: number;
+
 
 export function getEchoLayout(
   index: number,
@@ -40,12 +43,26 @@ export function getEchoLayout(
   const drawWidth = width * scale;
   const drawHeight = height * scale;
 
+  // A quadratic-style sideways bend: zero at each end and strongest midway.
+  // Both the path and the rotation are deterministic for animation/export.
+  const curvature = clamp(settings.pathCurve, -100, 100) / 100;
+  const perpendicularDistance = Math.min(width, height) * 0.45 *
+    intensity * clamp(settings.trailDistance / 100, 0, 2) *
+    0.65 * curvature * 4 * spacedProgress * (1 - spacedProgress);
+  const travelX = Math.cos(angle) * distance + Math.sin(angle) * perpendicularDistance;
+  const travelY = -Math.sin(angle) * distance + Math.cos(angle) * perpendicularDistance;
+  const rotationRadians = clamp(settings.echoRotation, -45, 45) *
+    progress * Math.PI / 180;
+
   return {
-    x: anchorX * (1 - scale) + Math.cos(angle) * distance,
-    y: anchorY * (1 - scale) - Math.sin(angle) * distance,
+    x: anchorX * (1 - scale) + travelX,
+    y: anchorY * (1 - scale) + travelY,
     width: drawWidth,
     height: drawHeight,
     scale,
+    pivotX: anchorX + travelX,
+    pivotY: anchorY + travelY,
+    rotationRadians,
     fade: getTrailFade(progress, settings.trailFadeCurve),
     // Match the original secondary-pass fade when the preset is Classic.
     secondaryFade: settings.trailFadeCurve === 'classic'
