@@ -19,6 +19,7 @@ import { SideBar } from './side-bar/side-bar';
 export class WorkSpace {
   readonly editorStore = inject(EditorStore);
   readonly animationService = inject(MotionAnimationService);
+  readonly getEffectiveDurationSeconds = getEffectiveDurationSeconds;
 
   readonly isEditingMask = signal(false);
   readonly showMask = signal(false);
