@@ -2,7 +2,12 @@ import { Component, inject, input, output, signal } from '@angular/core';
 import { EditorStore } from '../../../../stores/editor.store';
 import { CollapsibleSection } from '../../../../ui-components/collapsible-section/collapsible-section';
 import { ArtworkExportService } from '../../../../services/artwork-export.service';
-import { VideoExportSettings } from '../../../../models/video-export-settings.model';
+import {
+  ExportAspectRatio,
+  ExportFit,
+  VideoExportSettings,
+} from '../../../../models/video-export-settings.model';
+import { getExportDimensions } from '../../../../services/export-layout';
 import { VideoExportService } from '../../../../services/video-export.service';
 
 @Component({
@@ -23,6 +28,35 @@ export class Export {
   readonly isExporting = signal(false);
   readonly exportProgress = signal(0);
   readonly exportError = signal<string | null>(null);
+  readonly artworkError = signal<string | null>(null);
+
+  exportDimensionsLabel(): string {
+    const image = this.editorStore.uploadedImage();
+    if (!image) return 'Upload an image to view dimensions';
+    const settings = this.videoSettings();
+    const { width, height } = getExportDimensions(
+      image.width, image.height, settings.resolution, settings.aspectRatio,
+    );
+    return `${width} × ${height} px`;
+  }
+
+  updateExportAspectRatio(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (!['original', '9:16', '4:5', '1:1', '16:9'].includes(value)) return;
+    this.updateVideoSettings.emit({
+      ...this.videoSettings(),
+      aspectRatio: value as ExportAspectRatio,
+    });
+  }
+
+  updateExportFit(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (value !== 'contain' && value !== 'cover') return;
+    this.updateVideoSettings.emit({
+      ...this.videoSettings(),
+      fit: value as ExportFit,
+    });
+  }
 
   async exportArtwork(): Promise<void> {
     const artwork = this.editorStore.processedImage();
@@ -38,12 +72,13 @@ export class Export {
     // Remove the original file extension.
     const baseName = originalName.replace(/\.[^/.]+$/, '');
 
-    const filename = `${baseName}-motion-trails.png`;
+    const filename = `${baseName}-motion-trails-${this.videoSettings().aspectRatio.replace(':', 'x')}.png`;
+    this.artworkError.set(null);
 
     try {
-      await this.artworkExportService.exportPng(artwork, filename);
+      await this.artworkExportService.exportPng(artwork, filename, this.videoSettings());
     } catch (error) {
-      console.error('Artwork export failed:', error);
+      this.artworkError.set(error instanceof Error ? error.message : 'Artwork export failed.');
     }
   }
 
