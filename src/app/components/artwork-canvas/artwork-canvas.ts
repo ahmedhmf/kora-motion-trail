@@ -27,6 +27,43 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
   private anchor = { x: 0, y: 0 };
   private dragging: 'end' | 'curve' | null = null;
   private lastDragValue = '';
+  private refining = false;
+  private draftMask: HTMLCanvasElement | null = null;
+  private showDraftOverlay = true;
+  private draftOverlay: HTMLCanvasElement | null = null;
+  private paintingPointer: number | null = null;
+  private lastPaintPoint: { x: number; y: number } | null = null;
+  private brushDiameter = 24;
+
+  @Input() set refiningBallMask(value: boolean) {
+    this.refining = value;
+    if (!value) {
+      this.paintingPointer = null;
+      this.lastPaintPoint = null;
+    }
+    if (this.viewReady) this.drawImage();
+  }
+  get refiningBallMask(): boolean { return this.refining; }
+
+  @Input() set ballMaskDraft(value: HTMLCanvasElement | null) {
+    this.draftMask = value;
+    this.draftOverlay = null;
+    if (this.viewReady) this.drawImage();
+  }
+  @Input() set ballMaskRevision(_value: number) {
+    this.draftOverlay = null;
+    if (this.viewReady) this.drawImage();
+  }
+  @Input() set showBallMaskOverlay(value: boolean) {
+    this.showDraftOverlay = value;
+    if (this.viewReady) this.drawImage();
+  }
+  @Input() set ballBrushSize(value: number) { this.brushDiameter = value; }
+  @Output() ballMaskPaint = new EventEmitter<{
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  }>();
+
   private selectionMode = false;
   private pathEditMode = false;
   @Input() set selectingBall(value: boolean) {
@@ -168,6 +205,15 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
   onPointerDown(event: PointerEvent): void {
     if (!this.currentImage) return;
     const p = this.point(event);
+    if (this.refining && this.draftMask) {
+      if (event.button !== 0 && event.pointerType === 'mouse') return;
+      this.paintingPointer = event.pointerId;
+      this.lastPaintPoint = p;
+      this.canvasRef.nativeElement.setPointerCapture(event.pointerId);
+      this.ballMaskPaint.emit({ from: p, to: p });
+      event.preventDefault();
+      return;
+    }
     if (this.selectingBall) {
       this.ballPicked.emit(p);
       return;
@@ -189,6 +235,14 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
   }
 
   onPointerMove(event: PointerEvent): void {
+    if (this.refining && this.paintingPointer === event.pointerId &&
+        this.lastPaintPoint && this.currentImage) {
+      const p = this.point(event);
+      this.ballMaskPaint.emit({ from: this.lastPaintPoint, to: p });
+      this.lastPaintPoint = p;
+      event.preventDefault();
+      return;
+    }
     if (!this.dragging || !this.currentImage || !this.currentMotion) return;
     const p = this.point(event);
     const a = this.motionAnchor(), m = this.currentMotion;
@@ -227,10 +281,37 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
   }
 
   onPointerUp(event: PointerEvent): void {
+    if (this.paintingPointer === event.pointerId) {
+      this.paintingPointer = null;
+      this.lastPaintPoint = null;
+    }
     this.dragging = null;
     this.lastDragValue = '';
     const canvas = this.canvasRef.nativeElement;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+  }
+
+  private getDraftOverlay(): HTMLCanvasElement | null {
+    const mask = this.draftMask;
+    if (!mask) return null;
+    if (this.draftOverlay) return this.draftOverlay;
+    const source = mask.getContext('2d');
+    if (!source) return null;
+    const pixels = source.getImageData(0, 0, mask.width, mask.height);
+    for (let i = 0; i < pixels.data.length; i += 4) {
+      // Mask brightness indicates membership; display as cyan on top of photo.
+      const alpha = Math.round(pixels.data[i] * 0.55);
+      pixels.data[i] = 34;
+      pixels.data[i + 1] = 211;
+      pixels.data[i + 2] = 238;
+      pixels.data[i + 3] = alpha;
+    }
+    const overlay = document.createElement('canvas');
+    overlay.width = mask.width;
+    overlay.height = mask.height;
+    overlay.getContext('2d')?.putImageData(pixels, 0, 0);
+    this.draftOverlay = overlay;
+    return overlay;
   }
 
   private drawGuides(ctx: CanvasRenderingContext2D, width: number): void {
@@ -310,7 +391,15 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    if (this.currentAnimationFrame) {
+    if (this.refining) {
+      // Edit against the source image, not the processed trails or a mask-only
+      // view, so boundaries can be corrected precisely.
+      ctx.drawImage(this.currentImage.image, 0, 0, width, height);
+      if (this.showDraftOverlay) {
+        const overlay = this.getDraftOverlay();
+        if (overlay) ctx.drawImage(overlay, 0, 0, width, height);
+      }
+    } else if (this.currentAnimationFrame) {
       ctx.drawImage(this.currentAnimationFrame, 0, 0, width, height);
     } else if (this.maskVisible && this.currentMask) {
       ctx.drawImage(this.currentMask, 0, 0, width, height);
@@ -319,7 +408,7 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
     } else {
       ctx.drawImage(this.currentImage.image, 0, 0, width, height);
     }
-    this.drawGuides(ctx, width);
+    if (!this.refining) this.drawGuides(ctx, width);
   }
 
   ngOnDestroy(): void {
