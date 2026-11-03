@@ -1,4 +1,5 @@
 type ToolSection =
+  | 'presets'
   | 'motion'
   | 'colors'
   | 'animation'

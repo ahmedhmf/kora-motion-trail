@@ -1,9 +1,10 @@
-<app-collapsible-section section="motion" title="Motion Trails" icon="✨">
+<div class="space-y-3">
+<app-collapsible-section section="presets" title="Presets" icon="🎨">
   <div class="mb-6 space-y-3 rounded-xl border border-zinc-700 bg-zinc-900/80 p-3">
     <div class="flex items-center justify-between gap-2">
       <h3 class="text-sm font-semibold text-white">Motion Presets</h3>
       <span class="text-xs text-cyan-400">
-        {{ activePreset() ? 'Preset selected' : 'Custom' }}
+        {{ isCustomSettings() ? 'Custom' : 'Preset selected' }}
       </span>
     </div>
     <p class="text-xs text-zinc-400">
@@ -24,6 +25,43 @@
       }
     </div>
   </div>
+  <div class="mt-4 space-y-3 border-t border-zinc-700 pt-4">
+    <div class="flex items-center justify-between gap-2">
+      <h3 class="text-sm font-semibold text-white">My Presets</h3>
+      <span class="text-xs text-zinc-400">{{ customPresets.presets().length }}/30</span>
+    </div>
+    @if (customPresets.presets().length === 0) {
+      <p class="text-xs text-zinc-400">Save the current motion settings to create your first preset.</p>
+    }
+    @for (preset of customPresets.presets(); track preset.id) {
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="min-w-0 flex-1 rounded-lg border px-3 py-2 text-left text-sm text-white hover:bg-zinc-800"
+          [class]="activeCustomPresetId() === preset.id ? 'border-cyan-400 bg-cyan-400/10' : 'border-zinc-700'"
+          [attr.aria-pressed]="activeCustomPresetId() === preset.id"
+          (click)="applyCustomPreset(preset.id)"
+        >{{ preset.name }}</button>
+        <button
+          type="button"
+          class="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300 hover:border-red-500 hover:text-red-300"
+          [attr.aria-label]="'Delete preset ' + preset.name"
+          (click)="removeCustomPreset(preset.id)"
+        >Delete</button>
+      </div>
+    }
+    <button
+      type="button"
+      class="min-h-11 w-full rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-cyan-400"
+      (click)="openSaveDialog()"
+    >+ Save Current Settings</button>
+    @if (presetError() && !isSaveDialogOpen()) {
+      <p role="alert" class="text-xs text-red-400">{{ presetError() }}</p>
+    }
+  </div>
+</app-collapsible-section>
+
+<app-collapsible-section section="motion" title="Motion" icon="💨">
   <div class="mb-3 flex items-center justify-between gap-2">
     <label for="intensity" class="text-sm"> Motion Intensity </label>
 
@@ -139,6 +177,17 @@
   </select>
 
 
+  <!-- RESET SETTINGS -->
+  <button
+    type="button"
+    class="min-h-11 w-full rounded-xl border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+    (click)="resetEffects()"
+  >
+    Reset Motion Settings
+  </button>
+</app-collapsible-section>
+
+<app-collapsible-section section="colors" title="Colors & Glow" icon="✨">
   <!-- TRAIL COLORS & NEON GLOW -->
   <div class="mt-6 space-y-4 border-t border-zinc-700 pt-5">
     <h3 class="text-sm font-semibold text-white">Trail Colors &amp; Neon Glow</h3>
@@ -219,12 +268,47 @@
     }
   </div>
 
-  <!-- RESET SETTINGS -->
-  <button
-    type="button"
-    class="min-h-11 w-full rounded-xl border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
-    (click)="resetEffects()"
-  >
-    Reset Motion Settings
-  </button>
 </app-collapsible-section>
+
+</div>
+
+@if (isSaveDialogOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
+       (click)="closeSaveDialog()">
+    <div role="dialog" aria-modal="true" aria-labelledby="save-preset-title"
+         class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl"
+         (click)="$event.stopPropagation()"
+         (keydown.escape)="closeSaveDialog()">
+      <h2 id="save-preset-title" class="text-lg font-semibold text-white">Save Custom Motion Preset</h2>
+      <p class="mt-2 text-sm text-zinc-400">Save the current intensity, direction, trail colors and glow. Your preset stays in this browser.</p>
+      <form class="mt-5 space-y-4" (submit)="saveCustomPreset($event)">
+        <div class="space-y-2">
+          <label for="new-preset-name" class="block text-sm text-zinc-300">Preset name</label>
+          <input
+            #presetNameInput
+            id="new-preset-name"
+            type="text"
+            maxlength="40"
+            required
+            autocomplete="off"
+            placeholder="e.g. My Matchday Style"
+            class="w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-3 text-white outline-none focus:border-cyan-400"
+            [value]="newPresetName()"
+            (input)="newPresetName.set($any($event.target).value)"
+          />
+        </div>
+        @if (presetError()) {
+          <p role="alert" class="text-sm text-red-400">{{ presetError() }}</p>
+        }
+        <div class="flex justify-end gap-3">
+          <button type="button"
+                  class="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-200 hover:bg-zinc-800"
+                  (click)="closeSaveDialog()">Cancel</button>
+          <button type="submit"
+                  class="rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-zinc-950 hover:bg-cyan-400"
+                  [disabled]="!newPresetName().trim()">Save Preset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

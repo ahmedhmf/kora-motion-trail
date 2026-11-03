@@ -11,7 +11,7 @@
            focus-visible:outline-2
            focus-visible:outline-cyan-400"
     [attr.aria-expanded]="collapsibleSectionStore.isSectionOpen(section())"
-    aria-controls="motion-tools-content"
+    [attr.aria-controls]="section() + '-tools-content'"
     (click)="collapsibleSectionStore.toggleSection(section())"
   >
     <div class="flex items-center gap-3">
@@ -37,6 +37,7 @@
   </button>
   @if (collapsibleSectionStore.isSectionOpen(section())) {
     <div
+      [id]="section() + '-tools-content'"
       class="space-y-5 border-t border-zinc-800 p-4"
     >
       <ng-content></ng-content>

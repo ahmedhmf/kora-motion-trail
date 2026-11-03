@@ -1,31 +1,25 @@
-import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 type CollapsibleSectionState = {
-  openSections: Record<ToolSection, boolean>;
+  activeSection: ToolSection | null;
 };
 
+// Only one tool is expanded at a time. Open Mask on first load.
 const initialState: CollapsibleSectionState = {
-  openSections: {
-    motion: false,
-    colors: false,
-    animation: false,
-    export: false,
-    mask: false,
-  },
+  activeSection: 'mask',
 };
 
 export const CollapsibleSectionStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withMethods((store) => ({
-    toggleSection: (section: ToolSection) => {
-      patchState(store, (state) => ({
-        openSections: {
-          ...state.openSections,
-          [section]: !state.openSections[section],
-        },
-      }));
+    toggleSection(section: ToolSection): void {
+      patchState(store, {
+        activeSection: store.activeSection() === section ? null : section,
+      });
     },
-    isSectionOpen: (section: ToolSection) => store.openSections()[section],
+    isSectionOpen(section: ToolSection): boolean {
+      return store.activeSection() === section;
+    },
   })),
 );

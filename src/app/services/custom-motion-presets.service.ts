@@ -1,0 +1,119 @@
+import { Injectable, signal } from '@angular/core';
+import { DEFAULT_MOTION_SETTINGS, MotionSettings } from '../models/motion-settings.model';
+
+export interface CustomMotionPreset {
+  id: string;
+  name: string;
+  settings: MotionSettings;
+}
+
+const STORAGE_KEY = 'football-art-lab.motion-presets.v1';
+const LIMIT = 30;
+const settingKeys = Object.keys(DEFAULT_MOTION_SETTINGS) as (keyof MotionSettings)[];
+
+function validSettings(value: unknown): value is MotionSettings {
+  if (!value || typeof value !== 'object') return false;
+  const settings = value as Record<string, unknown>;
+  const percentFields = [
+    'intensity', 'preservation', 'visibility', 'trailStrength', 'glowIntensity',
+  ];
+  if (!percentFields.every((key) =>
+    typeof settings[key] === 'number' &&
+    Number.isFinite(settings[key]) &&
+    (settings[key] as number) >= 0 &&
+    (settings[key] as number) <= 100
+  )) return false;
+  if (typeof settings['layers'] !== 'number' ||
+    !Number.isInteger(settings['layers']) ||
+    settings['layers'] < 1 || settings['layers'] > 30) return false;
+  if (!['left', 'right', 'up', 'down'].includes(String(settings['direction']))) return false;
+  if (!['original', 'solid'].includes(String(settings['trailColorMode']))) return false;
+  if (typeof settings['trailColor'] !== 'string' ||
+    !/^#[0-9a-fA-F]{6}$/.test(settings['trailColor'])) return false;
+  if (typeof settings['glowEnabled'] !== 'boolean') return false;
+  if (typeof settings['glowBlur'] !== 'number' ||
+    !Number.isFinite(settings['glowBlur']) ||
+    settings['glowBlur'] < 0 || settings['glowBlur'] > 100) return false;
+  return settingKeys.every((key) => key in settings);
+}
+
+export function parseCustomPresets(raw: string | null): CustomMotionPreset[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is CustomMotionPreset => {
+      if (!item || typeof item !== 'object') return false;
+      const entry = item as Record<string, unknown>;
+      return typeof entry['id'] === 'string' &&
+        entry['id'].length > 0 && entry['id'].length <= 100 &&
+        typeof entry['name'] === 'string' &&
+        entry['name'].trim().length > 0 &&
+        entry['name'].length <= 40 &&
+        validSettings(entry['settings']);
+    }).slice(0, LIMIT).map((item) => ({
+      id: item.id,
+      name: item.name,
+      settings: Object.fromEntries(settingKeys.map((key) =>
+        [key, item.settings[key]])) as unknown as MotionSettings,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class CustomMotionPresetsService {
+  readonly presets = signal<CustomMotionPreset[]>(this.load());
+
+  private load(): CustomMotionPreset[] {
+    try {
+      return typeof localStorage === 'undefined'
+        ? [] : parseCustomPresets(localStorage.getItem(STORAGE_KEY));
+    } catch {
+      return [];
+    }
+  }
+
+  save(name: string, settings: MotionSettings): void {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed.length > 40) {
+      throw new Error('Preset name must be between 1 and 40 characters.');
+    }
+    if (!validSettings(settings)) {
+      throw new Error('The motion settings cannot be saved.');
+    }
+    if (this.presets().length >= LIMIT) {
+      throw new Error('You can save up to 30 custom presets.');
+    }
+    if (this.presets().some((item) => item.name.toLowerCase() === trimmed.toLowerCase())) {
+      throw new Error('A preset with that name already exists.');
+    }
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `preset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const next = [...this.presets(), {
+      id, name: trimmed, settings: { ...settings },
+    }];
+    this.persist(next);
+    this.presets.set(next);
+  }
+
+  remove(id: string): void {
+    const next = this.presets().filter((preset) => preset.id !== id);
+    if (next.length === this.presets().length) return;
+    this.persist(next);
+    this.presets.set(next);
+  }
+
+  private persist(presets: CustomMotionPreset[]): void {
+    try {
+      if (typeof localStorage === 'undefined') {
+        throw new Error('Browser storage is unavailable.');
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+    } catch {
+      throw new Error('Could not save presets in this browser. Check storage permissions.');
+    }
+  }
+}
