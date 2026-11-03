@@ -18,6 +18,8 @@ describe('custom motion presets persistence', () => {
     delete legacy.echoScale;
     delete legacy.pathCurve;
     delete legacy.echoRotation;
+    delete legacy.trailEndColor;
+    delete legacy.directionalBlur;
     legacy.direction = 'up';
     const restored = parseCustomPresets(JSON.stringify([{ ...preset, settings: legacy }]));
     expect(restored).toHaveLength(1);
@@ -28,6 +30,8 @@ describe('custom motion presets persistence', () => {
     expect(restored[0].settings.echoScale).toBe(100);
     expect(restored[0].settings.pathCurve).toBe(0);
     expect(restored[0].settings.echoRotation).toBe(0);
+    expect(restored[0].settings.trailEndColor).toBe(DEFAULT_MOTION_SETTINGS.trailEndColor);
+    expect(restored[0].settings.directionalBlur).toBe(0);
     expect(restored[0].settings.glowEnabled).toBe(true);
   });
 
@@ -50,6 +54,28 @@ describe('custom motion presets persistence', () => {
     expect(parseCustomPresets(JSON.stringify([
       { ...preset, settings: { ...preset.settings, echoRotation: 46 } },
     ]))).toEqual([]);
+  });
+
+  it('restores gradient and streak settings', () => {
+    const customized = { ...preset, settings: {
+      ...preset.settings,
+      trailColorMode: 'gradient',
+      trailColor: '#00ccff',
+      trailEndColor: '#ff9900',
+      directionalBlur: 18,
+    } };
+    expect(parseCustomPresets(JSON.stringify([customized]))).toEqual([customized]);
+  });
+
+  it('rejects invalid gradient endpoints or motion blur amounts', () => {
+    const invalidColor = { ...preset, settings: {
+      ...preset.settings, trailColorMode: 'gradient', trailEndColor: 'broken',
+    } };
+    const invalidBlur = { ...preset, settings: {
+      ...preset.settings, directionalBlur: 31,
+    } };
+    expect(parseCustomPresets(JSON.stringify([invalidColor]))).toEqual([]);
+    expect(parseCustomPresets(JSON.stringify([invalidBlur]))).toEqual([]);
   });
 
   it('restores valid settings snapshots', () => {
