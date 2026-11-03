@@ -33,6 +33,43 @@
                 <option [value]="15">15 seconds</option>
               </select>
             </div>
+
+            <div>
+              <label for="animation-speed" class="mb-2 block text-sm text-zinc-300">
+                Playback Speed
+              </label>
+              <select
+                id="animation-speed"
+                class="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-white"
+                [value]="videoSettings().speed"
+                (change)="updateAnimationSpeed($event)"
+              >
+                @for (speed of speeds; track speed) {
+                  <option [value]="speed">{{ speed }}×</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label for="animation-easing" class="mb-2 block text-sm text-zinc-300">
+                Animation Easing
+              </label>
+              <select
+                id="animation-easing"
+                class="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-white"
+                [value]="videoSettings().easing"
+                (change)="updateAnimationEasing($event)"
+              >
+                @for (option of easings; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+
+            <p class="text-xs text-zinc-400">
+              Actual playback and export length: {{ actualDurationSeconds() }} seconds.
+              Speed changes duration; easing changes the motion pacing.
+            </p>
           </div>
 
           <button
