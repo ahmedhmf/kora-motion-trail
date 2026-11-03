@@ -53,7 +53,7 @@
             <app-artwork-canvas
               class="block w-full min-w-0"
               [image]="uploaded"
-              [mask]="editorStore.playerMask()"
+              [mask]="editorStore.playerOnlyMask() ?? editorStore.playerMask()"
               [showMask]="showMask()"
               [processedImage]="editorStore.processedImage()"
               [animationFrame]="animationFrame()"
