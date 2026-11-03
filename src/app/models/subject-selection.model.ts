@@ -9,9 +9,11 @@ export interface BallSelection {
 export function getBallSelectionAt(
   x: number, y: number, radius: number, width: number, height: number,
 ): BallSelection {
+  const clamp = (value: number, min: number, max: number, fallback: number) =>
+    Math.max(min, Math.min(max, Number.isFinite(value) ? value : fallback));
   return {
-    x: Math.min(width, Math.max(0, x)),
-    y: Math.min(height, Math.max(0, y)),
-    radius: Math.max(2, Math.min(Math.min(width, height) / 3, radius)),
+    x: clamp(x, 0, width, width / 2),
+    y: clamp(y, 0, height, height / 2),
+    radius: clamp(radius, 2, Math.max(2, Math.min(width, height) / 3), 8),
   };
 }
