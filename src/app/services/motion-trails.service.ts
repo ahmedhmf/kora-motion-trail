@@ -17,8 +17,8 @@ export class MotionTrailsService {
 
   private subjectAnchor: { x: number; y: number } | null = null;
 
-  // Keep at most two tint/blur variants for a gradient. Never accumulate
-  // canvases across images or when the user experiments with colors.
+  // Keep up to four variants: two gradient endpoints per subject (player and
+  // ball). Eviction stays bounded as colors are edited or images replaced.
   private coloredSubjects: Array<{
     source: HTMLCanvasElement;
     color: string;
@@ -64,7 +64,7 @@ export class MotionTrailsService {
     ctx.globalCompositeOperation = 'source-over';
 
     this.coloredSubjects.push({ source: subject, color, canvas });
-    if (this.coloredSubjects.length > 2) this.coloredSubjects.shift();
+    if (this.coloredSubjects.length > 4) this.coloredSubjects.shift();
     return canvas;
   }
 
@@ -90,7 +90,7 @@ export class MotionTrailsService {
 
     const result = { source, blur, canvas, padding };
     this.glowSubjects.push(result);
-    if (this.glowSubjects.length > 2) this.glowSubjects.shift();
+    if (this.glowSubjects.length > 4) this.glowSubjects.shift();
     return result;
   }
 
@@ -124,7 +124,7 @@ export class MotionTrailsService {
     ctx.globalAlpha = 1;
     const result = { source, amount, angle, canvas, padding };
     this.streakSubjects.push(result);
-    if (this.streakSubjects.length > 2) this.streakSubjects.shift();
+    if (this.streakSubjects.length > 4) this.streakSubjects.shift();
     return result;
   }
 
