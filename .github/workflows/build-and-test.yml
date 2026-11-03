@@ -1,0 +1,22 @@
+name: Angular build and tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Compile Angular templates and TypeScript
+        run: npm run build -- --configuration development
+      - name: Run unit tests
+        run: npm test -- --watch=false
