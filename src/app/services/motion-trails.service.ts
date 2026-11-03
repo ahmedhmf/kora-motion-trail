@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 import { MotionSettings } from '../models/motion-settings.model';
-import { EchoLayout, getEchoLayout } from './advanced-motion-layout';
+import { EchoLayout, getEchoLayout, getGradientWeights } from './advanced-motion-layout';
 
 @Injectable({
   providedIn: 'root',
@@ -180,11 +180,11 @@ export class MotionTrailsService {
     // weights based on echo distance, avoiding per-frame pixel processing.
     const drawTrail = (echo: EchoLayout, opacity: number, streaks: boolean): void => {
       if (opacity <= 0) return;
-      const progress = echo.progress;
+      const weights = getGradientWeights(echo.progress);
       const sources: Array<{ source: HTMLCanvasElement; weight: number }> =
         secondarySource
-          ? [{ source: primarySource, weight: 1 - progress },
-             { source: secondarySource, weight: progress }]
+          ? [{ source: primarySource, weight: weights.near },
+             { source: secondarySource, weight: weights.far }]
           : [{ source: primarySource, weight: 1 }];
       for (const { source, weight } of sources) {
         if (weight <= 0) continue;
