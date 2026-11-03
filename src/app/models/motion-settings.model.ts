@@ -4,7 +4,7 @@ export type MotionDirection =
   | 'up'
   | 'down';
 
-export type TrailColorMode = 'original' | 'solid';
+export type TrailColorMode = 'original' | 'solid' | 'gradient';
 export type TrailSpacing = 'tight' | 'normal' | 'wide';
 export type TrailFadeCurve = 'classic' | 'linear' | 'smooth' | 'sharp' | 'constant';
 
@@ -23,6 +23,8 @@ export interface MotionSettings {
   trailStrength: number; // 0–100
   trailColorMode: TrailColorMode;
   trailColor: string;
+  trailEndColor: string;
+  directionalBlur: number; // 0–30 pixel streak length
   glowEnabled: boolean;
   glowIntensity: number;
   glowBlur: number;
@@ -45,6 +47,8 @@ export const DEFAULT_MOTION_SETTINGS: MotionSettings = {
   trailStrength: 85,
   trailColorMode: 'original',
   trailColor: '#00e5ff',
+  trailEndColor: '#ff4d8d',
+  directionalBlur: 0,
   glowEnabled: false,
   glowIntensity: 65,
   glowBlur: 18,
