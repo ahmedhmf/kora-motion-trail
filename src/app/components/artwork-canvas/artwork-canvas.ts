@@ -26,6 +26,7 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
   private subject: MotionSubject = 'player';
   private anchor = { x: 0, y: 0 };
   private dragging: 'end' | 'curve' | null = null;
+  private lastDragValue = '';
   private selectionMode = false;
   private pathEditMode = false;
   @Input() set selectingBall(value: boolean) {
@@ -181,6 +182,7 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
     this.dragging = endDistance <= threshold && endDistance <= midDistance
       ? 'end' : midDistance <= threshold ? 'curve' : null;
     if (this.dragging) {
+      this.lastDragValue = '';
       this.canvasRef.nativeElement.setPointerCapture(event.pointerId);
       event.preventDefault();
     }
@@ -194,7 +196,7 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
     if (this.dragging === 'end') {
       const base = Math.min(this.currentImage.width, this.currentImage.height) *
         0.45 * m.intensity / 100;
-      this.motionPathChanged.emit({
+      this.emitDrag({
         directionAngle: Math.round((Math.atan2(-dy, dx) * 180 / Math.PI + 360) % 360),
         trailDistance: Math.round(Math.max(0, Math.min(200,
           base > 0 ? 100 * Math.hypot(dx, dy) / base : m.trailDistance))),
@@ -210,15 +212,23 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
       const t = Math.pow(0.5, power);
       const amplitude = Math.min(this.currentImage.width, this.currentImage.height) *
         0.45 * m.intensity / 100 * m.trailDistance / 100 * 0.65 * 4 * t * (1 - t);
-      if (amplitude > 0) this.motionPathChanged.emit({
+      if (amplitude > 0) this.emitDrag({
         pathCurve: Math.round(Math.max(-100, Math.min(100, sideways / amplitude * 100))),
       });
     }
     event.preventDefault();
   }
 
+  private emitDrag(changes: Partial<MotionSettings>): void {
+    const key = JSON.stringify(changes);
+    if (key === this.lastDragValue) return;
+    this.lastDragValue = key;
+    this.motionPathChanged.emit(changes);
+  }
+
   onPointerUp(event: PointerEvent): void {
     this.dragging = null;
+    this.lastDragValue = '';
     const canvas = this.canvasRef.nativeElement;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   }
