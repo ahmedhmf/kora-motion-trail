@@ -8,6 +8,8 @@ import {
   DEFAULT_MOTION_SETTINGS, MotionSettings, TrailColorMode,
 } from '../../models/motion-settings.model';
 import { drawTrackingOverlay } from '../../services/tracking-overlay';
+import { applyVideoCorrections, upsertCorrection, type VideoCorrectionKeyframe } from '../../services/video-correction-keyframes';
+import type { TrackCenter } from '../../services/subject-tracking';
 
 type Subject = 'player' | 'ball';
 type Preview = 'artwork' | 'source' | 'player' | 'ball' | 'combined';
@@ -28,6 +30,12 @@ export class VideoLab implements OnDestroy {
   readonly name = signal<string | null>(null);
   readonly duration = signal(0);
   readonly frames = signal<SegmentedClipFrame[]>([]);
+  readonly sourceFrames = signal<SegmentedClipFrame[]>([]);
+  readonly corrections = signal<VideoCorrectionKeyframe[]>([]);
+  readonly correcting = signal(false);
+  readonly ballCorrectionRadius = signal(9);
+  readonly correctionDraft = signal<TrackCenter | null>(null);
+  private activeCorrectionPointer: number | null = null;
   readonly frameIndex = signal(0);
   readonly busy = signal(false);
   readonly exporting = signal(false);
@@ -60,6 +68,10 @@ export class VideoLab implements OnDestroy {
     if (this.sourceUrl) URL.revokeObjectURL(this.sourceUrl);
     this.sourceUrl = null;
     this.frames.set([]);
+    this.sourceFrames.set([]);
+    this.corrections.set([]);
+    this.correcting.set(false);
+    this.correctionDraft.set(null);
     this.frameIndex.set(0);
     this.name.set(null);
     this.error.set(null);
@@ -120,6 +132,9 @@ export class VideoLab implements OnDestroy {
     this.progress.set(0);
     this.error.set(null);
     this.frames.set([]);
+    this.sourceFrames.set([]);
+    this.corrections.set([]);
+    this.correcting.set(false);
     const generation = ++this.generation;
     try {
       const result = await this.clips.process(
@@ -129,6 +144,7 @@ export class VideoLab implements OnDestroy {
         () => generation !== this.generation,
       );
       if (generation !== this.generation) return;
+      this.sourceFrames.set(result);
       this.frames.set(result);
       this.frameIndex.set(0);
       this.previewMode.set('artwork');
@@ -149,6 +165,115 @@ export class VideoLab implements OnDestroy {
     this.error.set(null);
   }
 
+  selectFrame(index: number): void {
+    if (!this.frames().length) return;
+    this.stop();
+    this.frameIndex.set(Math.max(0, Math.min(this.frames().length - 1, index)));
+    this.drawCurrent();
+  }
+
+  stepFrame(direction: -1 | 1): void {
+    this.selectFrame(this.frameIndex() + direction);
+  }
+
+  keyframeAt(index: number, subject: Subject): VideoCorrectionKeyframe | undefined {
+    return this.corrections().find((key) => key.frame === index && key.subject === subject);
+  }
+
+  toggleCorrectionMode(): void {
+    this.stop();
+    this.correcting.update((value) => !value);
+    this.correctionDraft.set(null);
+    this.drawCurrent();
+  }
+
+  updateBallCorrectionRadius(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (Number.isFinite(value)) this.ballCorrectionRadius.set(Math.max(2, Math.min(50, value)));
+  }
+
+  removeCorrection(): void {
+    const selected = this.frameIndex();
+    const subject = this.activeSubject();
+    this.corrections.update((items) => items.filter((key) =>
+      key.frame !== selected || key.subject !== subject));
+    this.rebuildCorrectedFrames();
+  }
+
+  clearCorrections(): void {
+    this.corrections.set([]);
+    this.rebuildCorrectedFrames();
+  }
+
+  private rebuildCorrectedFrames(): void {
+    this.frames.set(applyVideoCorrections(this.sourceFrames(), this.corrections()));
+    this.drawCurrent();
+  }
+
+  private canvasPoint(event: PointerEvent): TrackCenter | null {
+    const canvas = this.previewCanvas?.nativeElement;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return {
+      x: Math.max(0, Math.min(canvas.width, (event.clientX - rect.left) * canvas.width / rect.width)),
+      y: Math.max(0, Math.min(canvas.height, (event.clientY - rect.top) * canvas.height / rect.height)),
+    };
+  }
+
+  onCorrectionPointerDown(event: PointerEvent): void {
+    if (!this.correcting() || !this.frames().length) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const point = this.canvasPoint(event);
+    if (!point) return;
+    this.stop();
+    this.activeCorrectionPointer = event.pointerId;
+    this.correctionDraft.set(point);
+    this.previewCanvas?.nativeElement.setPointerCapture(event.pointerId);
+    this.drawCurrent();
+    event.preventDefault();
+  }
+
+  onCorrectionPointerMove(event: PointerEvent): void {
+    if (this.activeCorrectionPointer !== event.pointerId) return;
+    const point = this.canvasPoint(event);
+    if (!point) return;
+    this.correctionDraft.set(point);
+    this.drawCurrent();
+    event.preventDefault();
+  }
+
+  onCorrectionPointerUp(event: PointerEvent): void {
+    if (this.activeCorrectionPointer !== event.pointerId) return;
+    this.activeCorrectionPointer = null;
+    const canvas = this.previewCanvas?.nativeElement;
+    if (canvas?.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    if (event.type === 'pointercancel') {
+      this.correctionDraft.set(null);
+      this.drawCurrent();
+      return;
+    }
+    const point = this.canvasPoint(event) ?? this.correctionDraft();
+    this.correctionDraft.set(null);
+    if (!point) return;
+    const frame = this.sourceFrames()[this.frameIndex()];
+    if (!frame) return;
+    if (this.activeSubject() === 'player' && !frame.tracking?.player.center) {
+      this.error.set('Player not detected on this frame. Choose a frame where the player is visible.');
+      this.drawCurrent();
+      return;
+    }
+    const keyframe: VideoCorrectionKeyframe = {
+      subject: this.activeSubject(),
+      frame: this.frameIndex(),
+      center: point,
+      radius: this.ballCorrectionRadius(),
+    };
+    this.corrections.update((items) => upsertCorrection(items, keyframe));
+    this.error.set(null);
+    this.rebuildCorrectedFrames();
+  }
+
   toggleTrackingOverlay(): void {
     this.showTrackingOverlay.update((value) => !value);
     this.drawCurrent();
@@ -160,6 +285,7 @@ export class VideoLab implements OnDestroy {
 
   selectSubject(value: Subject): void {
     this.activeSubject.set(value);
+    this.correctionDraft.set(null);
     this.drawCurrent();
   }
 
@@ -272,8 +398,31 @@ export class VideoLab implements OnDestroy {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (selected) ctx.drawImage(selected, 0, 0);
-    if (this.showTrackingOverlay()) {
+    if (this.showTrackingOverlay() && !this.correcting()) {
       drawTrackingOverlay(ctx, this.frames(), this.frameIndex(), canvas.width, canvas.height);
+    }
+    if (this.correcting()) {
+      const subject = this.activeSubject();
+      const position = this.correctionDraft()
+        ?? this.keyframeAt(this.frameIndex(), subject)?.center
+        ?? this.sourceFrames()[this.frameIndex()]?.tracking?.[subject].center;
+      if (position) {
+        ctx.save();
+        ctx.strokeStyle = subject === 'ball' ? '#facc15' : '#22d3ee';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.arc(position.x, position.y,
+          subject === 'ball' ? this.ballCorrectionRadius() : 12, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(position.x - 14, position.y);
+        ctx.lineTo(position.x + 14, position.y);
+        ctx.moveTo(position.x, position.y - 14);
+        ctx.lineTo(position.x, position.y + 14);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   }
 
