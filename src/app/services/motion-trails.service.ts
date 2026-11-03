@@ -9,7 +9,7 @@ import { EchoLayout, getEchoLayout, getGradientWeights } from './advanced-motion
 export class MotionTrailsService {
   // Cache only the current image/mask pair to avoid retaining old large canvases.
   private cachedSubjects: Array<{
-    image: HTMLImageElement;
+    image: HTMLImageElement | HTMLCanvasElement | HTMLCanvasElement;
     mask: HTMLCanvasElement;
     canvas: HTMLCanvasElement;
     anchor: { x: number; y: number };
@@ -37,6 +37,14 @@ export class MotionTrailsService {
     canvas: HTMLCanvasElement;
     padding: number;
   }> = [];
+
+  private imageSize(image: HTMLImageElement | HTMLCanvasElement): {
+    width: number; height: number;
+  } {
+    return image instanceof HTMLCanvasElement
+      ? { width: image.width, height: image.height }
+      : { width: image.naturalWidth, height: image.naturalHeight };
+  }
 
   invalidateSubjectCache(): void {
     this.cachedSubjects = [];
@@ -128,11 +136,11 @@ export class MotionTrailsService {
     return result;
   }
 
-  private getSubject(image: HTMLImageElement, mask: HTMLCanvasElement): HTMLCanvasElement {
+  private getSubject(image: HTMLImageElement | HTMLCanvasElement, mask: HTMLCanvasElement): HTMLCanvasElement {
     const cached = this.cachedSubjects.find((entry) =>
       entry.image === image && entry.mask === mask &&
-      entry.canvas.width === image.naturalWidth &&
-      entry.canvas.height === image.naturalHeight);
+      entry.canvas.width === this.imageSize(image).width &&
+      entry.canvas.height === this.imageSize(image).height);
     if (cached) {
       this.subjectAnchor = cached.anchor;
       return cached.canvas;
@@ -140,7 +148,7 @@ export class MotionTrailsService {
 
     const canvas = this.extractSubject(image, mask);
     const anchor = this.subjectAnchor ?? {
-      x: image.naturalWidth / 2, y: image.naturalHeight / 2,
+      x: this.imageSize(image).width / 2, y: this.imageSize(image).height / 2,
     };
     this.cachedSubjects.push({ image, mask, canvas, anchor });
     if (this.cachedSubjects.length > 2) this.cachedSubjects.shift();
@@ -148,13 +156,13 @@ export class MotionTrailsService {
   }
 
   render(
-    image: HTMLImageElement,
+    image: HTMLImageElement | HTMLCanvasElement,
     mask: HTMLCanvasElement,
     settings: MotionSettings,
     ballMask?: HTMLCanvasElement | null,
     ballSettings?: MotionSettings,
   ): HTMLCanvasElement {
-    const width = image.naturalWidth, height = image.naturalHeight;
+    const width = this.imageSize(image).width, height = this.imageSize(image).height;
     const output = document.createElement('canvas');
     output.width = width;
     output.height = height;
@@ -173,12 +181,12 @@ export class MotionTrailsService {
 
   private drawLayer(
     ctx: CanvasRenderingContext2D,
-    image: HTMLImageElement,
+    image: HTMLImageElement | HTMLCanvasElement,
     mask: HTMLCanvasElement,
     settings: MotionSettings,
   ): HTMLCanvasElement {
-    const width = image.naturalWidth;
-    const height = image.naturalHeight;
+    const width = this.imageSize(image).width;
+    const height = this.imageSize(image).height;
     const subject = this.getSubject(image, mask);
     const gradient = settings.trailColorMode === 'gradient';
     const primarySource = settings.trailColorMode === 'original'
@@ -302,9 +310,9 @@ export class MotionTrailsService {
     ctx.restore();
   }
 
-  private extractSubject(image: HTMLImageElement, mask: HTMLCanvasElement): HTMLCanvasElement {
-    const width = image.naturalWidth;
-    const height = image.naturalHeight;
+  private extractSubject(image: HTMLImageElement | HTMLCanvasElement, mask: HTMLCanvasElement): HTMLCanvasElement {
+    const width = this.imageSize(image).width;
+    const height = this.imageSize(image).height;
 
     const subject = document.createElement('canvas');
     subject.width = width;
