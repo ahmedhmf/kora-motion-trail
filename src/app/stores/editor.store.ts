@@ -63,6 +63,7 @@ export const EditorStore = signalStore(
         try {
           const image = await imageService.loadImage(file);
 
+          motionTrailsService.invalidateSubjectCache();
           patchState(store, {
             uploadedImage: image,
             playerMask: null,
@@ -106,6 +107,7 @@ export const EditorStore = signalStore(
       },
 
       clearImage(): void {
+        motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           uploadedImage: null,
           playerMask: null,
@@ -121,6 +123,7 @@ export const EditorStore = signalStore(
           return;
         }
 
+        motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           isDetectingPlayer: true,
           detectionError: null,
@@ -154,6 +157,7 @@ export const EditorStore = signalStore(
       },
 
       clearPlayerMask(): void {
+        motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           playerMask: null,
           maskError: null,
@@ -171,6 +175,8 @@ export const EditorStore = signalStore(
       updatePlayerMask(mask: HTMLCanvasElement): void {
         if (!store.uploadedImage()) return;
 
+        // Masks may be edited in place: a canvas reference alone is not a revision.
+        motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           playerMask: mask,
           processedImage: null,
