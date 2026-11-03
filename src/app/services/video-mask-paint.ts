@@ -68,6 +68,25 @@ export function propagatePaintedMask(
   const target = targetOriginal
     ? maskBrightness(targetOriginal)
     : new Uint8ClampedArray(width * height);
+  const result = applyBrightnessPaintDelta(initial, painted, target, width, height,
+    offset, influence);
+  return videoMaskFromBrightness(result, width, height);
+}
+
+export function applyBrightnessPaintDelta(
+  initial: Uint8ClampedArray,
+  painted: Uint8ClampedArray,
+  target: Uint8ClampedArray,
+  width: number,
+  height: number,
+  offset: TrackCenter,
+  influence: number,
+): Uint8ClampedArray {
+  if (initial.length !== width * height || painted.length !== width * height ||
+      target.length !== width * height) {
+    throw new Error('Invalid video brightness array dimensions.');
+  }
+  const output = new Uint8ClampedArray(target);
   const amount = Math.max(0, Math.min(1, influence));
   const shiftX = Math.round(offset.x);
   const shiftY = Math.round(offset.y);
@@ -80,11 +99,12 @@ export function propagatePaintedMask(
       const targetX = x + shiftX;
       if (targetX < 0 || targetX >= width) continue;
       const index = targetY * width + targetX;
-      target[index] = Math.max(0, Math.min(255,
-        Math.round(target[index] + delta * amount)));
+      output[index] = Math.max(0, Math.min(255,
+        Math.round(output[index] + delta * amount)));
     }
   }
-  return videoMaskFromBrightness(target, width, height);
+  return output;
+
 }
 
 export function translateVideoMask(
