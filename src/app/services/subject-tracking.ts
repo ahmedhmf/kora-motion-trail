@@ -3,7 +3,7 @@
  * are emitted when an object disappears.
  */
 export type TrackedSubject = 'player' | 'ball';
-export type TrackStatus = 'detected' | 'predicted' | 'missing';
+export type TrackStatus = 'detected' | 'predicted' | 'missing' | 'corrected';
 
 export interface TrackBox {
   x: number;
