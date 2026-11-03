@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 
 import { MotionSettings } from '../models/motion-settings.model';
+import { getEchoLayout } from './advanced-motion-layout';
 
 @Injectable({
   providedIn: 'root',
@@ -12,6 +13,8 @@ export class MotionTrailsService {
     mask: HTMLCanvasElement;
     canvas: HTMLCanvasElement;
   } | null = null;
+
+  private subjectAnchor: { x: number; y: number } | null = null;
 
   private coloredSubject: {
     source: HTMLCanvasElement;
@@ -27,6 +30,7 @@ export class MotionTrailsService {
 
   invalidateSubjectCache(): void {
     this.cachedSubject = null;
+    this.subjectAnchor = null;
     this.coloredSubject = null;
     this.glowSubject = null;
   }
@@ -132,10 +136,6 @@ export class MotionTrailsService {
 
     const layers = Math.max(1, Math.round(settings.layers));
 
-    const direction = this.getDirection(settings.direction);
-
-    const maxDistance = Math.min(width, height) * 0.45 * intensity;
-
     const visibility = Math.max(0, Math.min(1, settings.visibility / 100));
     const baseTrailStrength = intensity * (1 - preservation * 0.65) * (settings.visibility / 100);
     const echoStrength = Math.max(0, Math.min(1, settings.trailStrength / 100));
@@ -147,15 +147,13 @@ export class MotionTrailsService {
     // -------------------------------------
 
     for (let i = layers; i >= 1; i--) {
-      const progress = i / layers;
-
-      const distance = maxDistance * progress;
-
-      const offsetX = direction.x * distance;
-      const offsetY = direction.y * distance;
+      const echo = getEchoLayout(
+        i, layers, width, height, settings,
+        this.subjectAnchor?.x, this.subjectAnchor?.y,
+      );
 
       // Strong echoes, including distant copies.
-      const fade = 1 - progress * 0.35;
+      const fade = echo.fade;
 
       // Trail Strength directly controls opacity.
       // Preservation and intensity no longer
@@ -165,10 +163,16 @@ export class MotionTrailsService {
       ctx.save();
       if (glow && glowIntensity > 0) {
         ctx.globalAlpha = Math.min(1, opacity * glowIntensity);
-        ctx.drawImage(glow.canvas, offsetX - glow.padding, offsetY - glow.padding);
+        ctx.drawImage(
+          glow.canvas,
+          echo.x - glow.padding * echo.scale,
+          echo.y - glow.padding * echo.scale,
+          glow.canvas.width * echo.scale,
+          glow.canvas.height * echo.scale,
+        );
       }
       ctx.globalAlpha = opacity;
-      ctx.drawImage(trailSource, offsetX, offsetY, width, height);
+      ctx.drawImage(trailSource, echo.x, echo.y, echo.width, echo.height);
       ctx.restore();
     }
 
@@ -177,15 +181,10 @@ export class MotionTrailsService {
     // -------------------------------------
 
     for (let i = layers; i >= 1; i--) {
-      const progress = i / layers;
-
-      const distance = maxDistance * progress;
-
-      const offsetX = direction.x * distance;
-      const offsetY = direction.y * distance;
+      const echo = getEchoLayout(i, layers, width, height, settings);
 
       // Gentle fading keeps distant echoes recognizable.
-      const fade = Math.pow(1 - progress, 0.65);
+      const fade = echo.secondaryFade;
 
       // User controls how strong the repeated silhouettes are.
       const opacity = baseTrailStrength * echoStrength * fade * 0.012;
@@ -194,7 +193,7 @@ export class MotionTrailsService {
 
       ctx.globalAlpha = opacity;
 
-      ctx.drawImage(trailSource, offsetX, offsetY, width, height);
+      ctx.drawImage(trailSource, echo.x, echo.y, echo.width, echo.height);
 
       ctx.restore();
     }
@@ -241,17 +240,31 @@ export class MotionTrailsService {
     const imageData = maskCtx.getImageData(0, 0, width, height);
 
     const pixels = imageData.data;
+    let minX = width, minY = height, maxX = -1, maxY = -1;
 
     for (let i = 0; i < pixels.length; i += 4) {
       // White mask = opaque subject.
       // Black mask = transparent background.
       const brightness = pixels[i];
+      if (brightness > 10) {
+        const pixel = i / 4;
+        const x = pixel % width;
+        const y = Math.floor(pixel / width);
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
 
       pixels[i] = 255;
       pixels[i + 1] = 255;
       pixels[i + 2] = 255;
       pixels[i + 3] = brightness;
     }
+
+    this.subjectAnchor = maxX >= minX
+      ? { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+      : { x: width / 2, y: height / 2 };
 
     maskCtx.putImageData(imageData, 0, 0);
 
@@ -265,19 +278,4 @@ export class MotionTrailsService {
     return subject;
   }
 
-  private getDirection(direction: MotionSettings['direction']): { x: number; y: number } {
-    switch (direction) {
-      case 'left':
-        return { x: -1, y: 0 };
-
-      case 'right':
-        return { x: 1, y: 0 };
-
-      case 'up':
-        return { x: 0, y: -1 };
-
-      case 'down':
-        return { x: 0, y: 1 };
-    }
-  }
 }

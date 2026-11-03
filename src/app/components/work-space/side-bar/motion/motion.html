@@ -187,6 +187,76 @@
   </button>
 </app-collapsible-section>
 
+<app-collapsible-section section="advanced-motion" title="Advanced Motion" icon="🎛️">
+  <p class="text-xs text-zinc-400">Fine-tune the geometry of each player echo. Changes also apply to animations and exports.</p>
+
+  <div class="space-y-2">
+    <div class="flex items-center justify-between gap-2">
+      <label for="trail-distance" class="text-sm text-zinc-300">Trail Distance</label>
+      <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().trailDistance }}%</span>
+    </div>
+    <input id="trail-distance" type="range" min="0" max="200" step="5"
+      class="w-full accent-cyan-400"
+      [value]="editorStore.motionSettings().trailDistance"
+      (input)="updateTrailDistance($event)" />
+    <p class="text-xs text-zinc-500">Increase or decrease how far the echoes travel.</p>
+  </div>
+
+  <div class="space-y-2">
+    <label for="trail-spacing" class="block text-sm text-zinc-300">Trail Spacing</label>
+    <select id="trail-spacing"
+      class="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-white"
+      [value]="editorStore.motionSettings().trailSpacing"
+      (change)="updateTrailSpacing($event)">
+      <option value="tight">Tight</option>
+      <option value="normal">Normal</option>
+      <option value="wide">Wide</option>
+    </select>
+  </div>
+
+  <div class="space-y-2">
+    <div class="flex items-center justify-between gap-2">
+      <label for="direction-angle" class="text-sm text-zinc-300">Direction Angle</label>
+      <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().directionAngle }}°</span>
+    </div>
+    <input id="direction-angle" type="range" min="0" max="360" step="5"
+      class="w-full accent-cyan-400"
+      [value]="editorStore.motionSettings().directionAngle"
+      (input)="updateDirectionAngle($event)" />
+    <p class="text-xs text-zinc-500">0° right · 90° up · 180° left · 270° down. Diagonal angles supported.</p>
+  </div>
+
+  <div class="space-y-2">
+    <label for="trail-fade" class="block text-sm text-zinc-300">Trail Fade Curve</label>
+    <select id="trail-fade"
+      class="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-white"
+      [value]="editorStore.motionSettings().trailFadeCurve"
+      (change)="updateTrailFadeCurve($event)">
+      <option value="classic">Classic (original look)</option>
+      <option value="linear">Linear</option>
+      <option value="smooth">Smooth</option>
+      <option value="sharp">Sharp</option>
+      <option value="constant">Constant opacity</option>
+    </select>
+  </div>
+
+  <div class="space-y-2">
+    <div class="flex items-center justify-between gap-2">
+      <label for="echo-scale" class="text-sm text-zinc-300">Echo Scale</label>
+      <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().echoScale }}%</span>
+    </div>
+    <input id="echo-scale" type="range" min="50" max="150" step="5"
+      class="w-full accent-cyan-400"
+      [value]="editorStore.motionSettings().echoScale"
+      (input)="updateEchoScale($event)" />
+    <p class="text-xs text-zinc-500">Distant silhouettes grow smaller or larger; the original player remains unchanged.</p>
+  </div>
+
+  <button type="button"
+    class="min-h-11 w-full rounded-xl border border-zinc-700 px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800"
+    (click)="resetAdvancedMotion()">Reset Advanced Controls</button>
+</app-collapsible-section>
+
 <app-collapsible-section section="colors" title="Colors & Glow" icon="✨">
   <!-- TRAIL COLORS & NEON GLOW -->
   <div class="mt-6 space-y-4 border-t border-zinc-700 pt-5">

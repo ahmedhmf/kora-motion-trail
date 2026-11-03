@@ -9,6 +9,29 @@ describe('custom motion presets persistence', () => {
     settings: { ...DEFAULT_MOTION_SETTINGS, trailStrength: 92, glowEnabled: true },
   };
 
+  it('migrates older presets without advanced fields', () => {
+    const legacy = { ...preset.settings } as Partial<typeof preset.settings>;
+    delete legacy.trailDistance;
+    delete legacy.trailSpacing;
+    delete legacy.directionAngle;
+    delete legacy.trailFadeCurve;
+    delete legacy.echoScale;
+    legacy.direction = 'up';
+    const restored = parseCustomPresets(JSON.stringify([{ ...preset, settings: legacy }]));
+    expect(restored).toHaveLength(1);
+    expect(restored[0].settings.direction).toBe('up');
+    expect(restored[0].settings.directionAngle).toBe(90);
+    expect(restored[0].settings.trailDistance).toBe(100);
+    expect(restored[0].settings.trailFadeCurve).toBe('classic');
+    expect(restored[0].settings.echoScale).toBe(100);
+    expect(restored[0].settings.glowEnabled).toBe(true);
+  });
+
+  it('rejects out-of-range advanced values', () => {
+    const invalid = { ...preset, settings: { ...preset.settings, directionAngle: 999 } };
+    expect(parseCustomPresets(JSON.stringify([invalid]))).toEqual([]);
+  });
+
   it('restores valid settings snapshots', () => {
     expect(parseCustomPresets(JSON.stringify([preset]))).toEqual([preset]);
   });
