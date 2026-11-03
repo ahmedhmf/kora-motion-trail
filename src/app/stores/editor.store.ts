@@ -85,6 +85,7 @@ export const EditorStore = signalStore(
             playerOnlyMask: null,
             ballSelection: null,
             activeSubject: 'player',
+            ballMotionSettings: { ...DEFAULT_MOTION_SETTINGS },
             maskError: null,
             isLoading: false,
             processedImage: null,
@@ -97,11 +98,15 @@ export const EditorStore = signalStore(
         }
       },
       updateMotionSettings(changes: Partial<MotionSettings>): void {
-        const key = store.activeSubject() === 'ball' && store.ballMask()
-          ? 'ballMotionSettings' : 'motionSettings';
-        patchState(store, {
-          [key]: { ...store[key](), ...changes },
-        });
+        if (store.activeSubject() === 'ball' && store.ballMask()) {
+          patchState(store, {
+            ballMotionSettings: { ...store.ballMotionSettings(), ...changes },
+          });
+        } else {
+          patchState(store, {
+            motionSettings: { ...store.motionSettings(), ...changes },
+          });
+        }
         this.applyMotionTrails();
       },
 
