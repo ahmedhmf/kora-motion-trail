@@ -13,8 +13,68 @@ export class MotionTrailsService {
     canvas: HTMLCanvasElement;
   } | null = null;
 
+  private coloredSubject: {
+    source: HTMLCanvasElement;
+    color: string;
+    canvas: HTMLCanvasElement;
+  } | null = null;
+  private glowSubject: {
+    source: HTMLCanvasElement;
+    blur: number;
+    canvas: HTMLCanvasElement;
+    padding: number;
+  } | null = null;
+
   invalidateSubjectCache(): void {
     this.cachedSubject = null;
+    this.coloredSubject = null;
+    this.glowSubject = null;
+  }
+
+  private getColoredSubject(subject: HTMLCanvasElement, color: string): HTMLCanvasElement {
+    if (this.coloredSubject?.source === subject && this.coloredSubject.color === color) {
+      return this.coloredSubject.canvas;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = subject.width;
+    canvas.height = subject.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not create colored trail canvas.');
+
+    ctx.drawImage(subject, 0, 0);
+    ctx.globalCompositeOperation = 'source-in';
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = 'source-over';
+
+    this.coloredSubject = { source: subject, color, canvas };
+    this.glowSubject = null;
+    return canvas;
+  }
+
+  private getGlowSubject(source: HTMLCanvasElement, blur: number): {
+    canvas: HTMLCanvasElement;
+    padding: number;
+  } {
+    if (this.glowSubject?.source === source && this.glowSubject.blur === blur) {
+      return this.glowSubject;
+    }
+
+    // Blur is constructed only when its source or radius changes, not each frame.
+    const padding = Math.ceil(blur * 3);
+    const canvas = document.createElement('canvas');
+    canvas.width = source.width + padding * 2;
+    canvas.height = source.height + padding * 2;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not create trail glow canvas.');
+
+    ctx.filter = `blur(${blur}px)`;
+    ctx.drawImage(source, padding, padding);
+    ctx.filter = 'none';
+
+    this.glowSubject = { source, blur, canvas, padding };
+    return this.glowSubject;
   }
 
   private getSubject(image: HTMLImageElement, mask: HTMLCanvasElement): HTMLCanvasElement {
@@ -54,6 +114,14 @@ export class MotionTrailsService {
     }
 
     const subject = this.getSubject(image, mask);
+    const trailSource = settings.trailColorMode === 'solid'
+      ? this.getColoredSubject(subject, settings.trailColor)
+      : subject;
+    const glowBlur = Math.max(0, Math.min(100, settings.glowBlur));
+    const glow = settings.glowEnabled && glowBlur > 0
+      ? this.getGlowSubject(trailSource, glowBlur)
+      : null;
+    const glowIntensity = Math.max(0, Math.min(1, settings.glowIntensity / 100));
 
     // Original photograph as background.
     ctx.drawImage(image, 0, 0, width, height);
@@ -95,10 +163,12 @@ export class MotionTrailsService {
       const opacity = Math.min(1, echoStrength * visibility * fade);
 
       ctx.save();
+      if (glow && glowIntensity > 0) {
+        ctx.globalAlpha = Math.min(1, opacity * glowIntensity);
+        ctx.drawImage(glow.canvas, offsetX - glow.padding, offsetY - glow.padding);
+      }
       ctx.globalAlpha = opacity;
-
-      ctx.drawImage(subject, offsetX, offsetY, width, height);
-
+      ctx.drawImage(trailSource, offsetX, offsetY, width, height);
       ctx.restore();
     }
 
@@ -124,7 +194,7 @@ export class MotionTrailsService {
 
       ctx.globalAlpha = opacity;
 
-      ctx.drawImage(subject, offsetX, offsetY, width, height);
+      ctx.drawImage(trailSource, offsetX, offsetY, width, height);
 
       ctx.restore();
     }
