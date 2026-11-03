@@ -8,6 +8,7 @@ const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
 
 export interface EchoLayout {
+  progress: number;
   x: number;
   y: number;
   width: number;
@@ -55,6 +56,7 @@ export function getEchoLayout(
     progress * Math.PI / 180;
 
   return {
+    progress,
     x: anchorX * (1 - scale) + travelX,
     y: anchorY * (1 - scale) + travelY,
     width: drawWidth,
