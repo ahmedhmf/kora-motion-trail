@@ -11,7 +11,7 @@ export class ArtworkExportService {
   async exportPng(
     canvas: HTMLCanvasElement,
     filename: string,
-    settings?: Pick<VideoExportSettings, 'resolution' | 'aspectRatio' | 'fit'>,
+    settings?: Pick<VideoExportSettings, 'resolution' | 'aspectRatio' | 'fit' | 'zoom' | 'offsetX' | 'offsetY'>,
   ): Promise<void> {
     let artwork = canvas;
 
@@ -27,7 +27,7 @@ export class ArtworkExportService {
       artwork.height = height;
       const ctx = artwork.getContext('2d');
       if (!ctx) throw new Error('Could not create export canvas.');
-      drawExportFrame(ctx, canvas, canvas.width, canvas.height, width, height, settings.fit);
+      drawExportFrame(ctx, canvas, canvas.width, canvas.height, width, height, settings);
     }
 
 
