@@ -129,11 +129,92 @@
     <option value="down">Down</option>
   </select>
 
+
+  <!-- TRAIL COLORS & NEON GLOW -->
+  <div class="mt-6 space-y-4 border-t border-zinc-700 pt-5">
+    <h3 class="text-sm font-semibold text-white">Trail Colors &amp; Neon Glow</h3>
+
+    <div class="space-y-2">
+      <label for="trail-color-mode" class="block text-sm text-zinc-300">Trail Color Mode</label>
+      <select
+        id="trail-color-mode"
+        class="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-white"
+        [value]="editorStore.motionSettings().trailColorMode"
+        (change)="updateTrailColorMode($event)"
+      >
+        <option value="original">Original player colors</option>
+        <option value="solid">Custom solid color</option>
+      </select>
+    </div>
+
+    @if (editorStore.motionSettings().trailColorMode === 'solid') {
+      <div class="flex items-center justify-between gap-3">
+        <label for="trail-color" class="text-sm text-zinc-300">Echo Color</label>
+        <div class="flex items-center gap-2">
+          <input
+            id="trail-color"
+            type="color"
+            class="h-10 w-12 cursor-pointer rounded border border-zinc-700 bg-zinc-900"
+            [value]="editorStore.motionSettings().trailColor"
+            (input)="updateTrailColor($event)"
+          />
+          <span class="text-xs text-zinc-400">{{ editorStore.motionSettings().trailColor }}</span>
+        </div>
+      </div>
+    }
+
+    <label class="flex cursor-pointer items-center gap-3 text-sm text-zinc-300">
+      <input
+        type="checkbox"
+        class="h-4 w-4 accent-cyan-400"
+        [checked]="editorStore.motionSettings().glowEnabled"
+        (change)="updateGlowEnabled($event)"
+      />
+      Enable Neon Glow
+    </label>
+
+    @if (editorStore.motionSettings().glowEnabled) {
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label for="glow-intensity" class="text-sm text-zinc-300">Glow Intensity</label>
+          <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().glowIntensity }}%</span>
+        </div>
+        <input
+          id="glow-intensity"
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          class="w-full accent-cyan-400"
+          [value]="editorStore.motionSettings().glowIntensity"
+          (input)="updateGlowIntensity($event)"
+        />
+      </div>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label for="glow-blur" class="text-sm text-zinc-300">Glow Radius</label>
+          <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().glowBlur }} px</span>
+        </div>
+        <input
+          id="glow-blur"
+          type="range"
+          min="0"
+          max="60"
+          step="2"
+          class="w-full accent-cyan-400"
+          [value]="editorStore.motionSettings().glowBlur"
+          (input)="updateGlowBlur($event)"
+        />
+      </div>
+      <p class="text-xs text-zinc-500">Glow surrounds the trail echoes; the original player stays sharp.</p>
+    }
+  </div>
+
   <!-- RESET SETTINGS -->
   <button
     type="button"
     class="min-h-11 w-full rounded-xl border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
-    (click)="editorStore.resetMotionSettings()"
+    (click)="resetEffects()"
   >
     Reset Motion Settings
   </button>
