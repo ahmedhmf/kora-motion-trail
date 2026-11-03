@@ -24,6 +24,8 @@ export function getEchoLayout(
   width: number,
   height: number,
   settings: MotionSettings,
+  anchorX = width / 2,
+  anchorY = height / 2,
 ): EchoLayout {
   const progress = clamp(index / Math.max(1, layers), 0, 1);
   const spacing: Record<TrailSpacing, number> = {
@@ -39,8 +41,8 @@ export function getEchoLayout(
   const drawHeight = height * scale;
 
   return {
-    x: (width - drawWidth) / 2 + Math.cos(angle) * distance,
-    y: (height - drawHeight) / 2 - Math.sin(angle) * distance,
+    x: anchorX * (1 - scale) + Math.cos(angle) * distance,
+    y: anchorY * (1 - scale) - Math.sin(angle) * distance,
     width: drawWidth,
     height: drawHeight,
     scale,
