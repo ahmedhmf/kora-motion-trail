@@ -5,16 +5,16 @@
   <canvas
   #canvas
   class="block h-auto max-h-[70vh] max-w-full object-contain"
-  [class.cursor-crosshair]="selectingBall"
-  [class.cursor-grab]="editingMotion && !selectingBall"
-  [style.touch-action]="selectingBall || editingMotion ? 'none' : 'auto'"
+  [class.cursor-crosshair]="selectingBall || refiningBallMask"
+  [class.cursor-grab]="editingMotion && !selectingBall && !refiningBallMask"
+  [style.touch-action]="selectingBall || editingMotion || refiningBallMask ? 'none' : 'auto'"
   (pointerdown)="onPointerDown($event)"
   (pointermove)="onPointerMove($event)"
   (pointerup)="onPointerUp($event)"
   (pointercancel)="onPointerUp($event)"
 ></canvas>
 
-  @if (showPlayerControls) {
+  @if (showPlayerControls && !refiningBallMask) {
     <div
       class="absolute inset-x-3 bottom-3 z-20 rounded-xl border border-white/10 bg-zinc-950/85 p-3 text-white shadow-2xl backdrop-blur-md"
     >
