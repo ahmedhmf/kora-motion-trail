@@ -1,5 +1,7 @@
 import { Injectable, signal } from '@angular/core';
-import { DEFAULT_MOTION_SETTINGS, MotionSettings } from '../models/motion-settings.model';
+import {
+  DEFAULT_MOTION_SETTINGS, MotionSettings, DIRECTION_ANGLES, MotionDirection,
+} from '../models/motion-settings.model';
 
 export interface CustomMotionPreset {
   id: string;
@@ -10,6 +12,19 @@ export interface CustomMotionPreset {
 const STORAGE_KEY = 'football-art-lab.motion-presets.v1';
 const LIMIT = 30;
 const settingKeys = Object.keys(DEFAULT_MOTION_SETTINGS) as (keyof MotionSettings)[];
+
+// Upgrade browser presets saved before Advanced Motion existed, without losing
+// the user's original direction, colors or glow. Never mutate saved snapshots.
+export function normalizeMotionSettings(value: Partial<MotionSettings>): MotionSettings {
+  const direction = value.direction && value.direction in DIRECTION_ANGLES
+    ? value.direction : DEFAULT_MOTION_SETTINGS.direction;
+  return {
+    ...DEFAULT_MOTION_SETTINGS,
+    ...value,
+    direction,
+    directionAngle: value.directionAngle ?? DIRECTION_ANGLES[direction as MotionDirection],
+  };
+}
 
 function validSettings(value: unknown): value is MotionSettings {
   if (!value || typeof value !== 'object') return false;
@@ -34,6 +49,18 @@ function validSettings(value: unknown): value is MotionSettings {
   if (typeof settings['glowBlur'] !== 'number' ||
     !Number.isFinite(settings['glowBlur']) ||
     settings['glowBlur'] < 0 || settings['glowBlur'] > 100) return false;
+  const advancedRanges: readonly [string, number, number][] = [
+    ['trailDistance', 0, 200],
+    ['directionAngle', 0, 360],
+    ['echoScale', 50, 150],
+  ];
+  if (!advancedRanges.every(([key, min, max]) =>
+    typeof settings[key] === 'number' && Number.isFinite(settings[key]) &&
+    (settings[key] as number) >= min && (settings[key] as number) <= max
+  )) return false;
+  if (!['tight', 'normal', 'wide'].includes(String(settings['trailSpacing']))) return false;
+  if (!['classic', 'linear', 'smooth', 'sharp', 'constant']
+    .includes(String(settings['trailFadeCurve']))) return false;
   return settingKeys.every((key) => key in settings);
 }
 
@@ -50,12 +77,12 @@ export function parseCustomPresets(raw: string | null): CustomMotionPreset[] {
         typeof entry['name'] === 'string' &&
         entry['name'].trim().length > 0 &&
         entry['name'].length <= 40 &&
-        validSettings(entry['settings']);
+        !!entry['settings'] && typeof entry['settings'] === 'object' &&
+        validSettings(normalizeMotionSettings(entry['settings'] as Partial<MotionSettings>));
     }).slice(0, LIMIT).map((item) => ({
       id: item.id,
       name: item.name,
-      settings: Object.fromEntries(settingKeys.map((key) =>
-        [key, item.settings[key]])) as unknown as MotionSettings,
+      settings: normalizeMotionSettings(item.settings),
     }));
   } catch {
     return [];
