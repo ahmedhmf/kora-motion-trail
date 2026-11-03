@@ -1,7 +1,13 @@
 import { Component, inject, input, output } from '@angular/core';
 import { EditorStore } from '../../../../stores/editor.store';
 import { CollapsibleSection } from '../../../../ui-components/collapsible-section/collapsible-section';
-import { AnimationStyle, VideoExportSettings } from '../../../../models/video-export-settings.model';
+import {
+  AnimationEasing,
+  AnimationSpeed,
+  AnimationStyle,
+  VideoExportSettings,
+} from '../../../../models/video-export-settings.model';
+import { getEffectiveDurationSeconds } from '../../../../services/animation-timing';
 import { ANIMATION_STYLES } from '../../../../services/motion-animation.service';
 
 @Component({
@@ -13,6 +19,32 @@ import { ANIMATION_STYLES } from '../../../../services/motion-animation.service'
 export class Animation {
   readonly editorStore = inject(EditorStore);
   readonly styles = ANIMATION_STYLES;
+  readonly speeds: readonly AnimationSpeed[] = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  readonly easings: readonly { value: AnimationEasing; label: string }[] = [
+    { value: 'linear', label: 'Linear (constant pace)' },
+    { value: 'ease-in', label: 'Ease In (slow start)' },
+    { value: 'ease-out', label: 'Ease Out (slow finish)' },
+    { value: 'ease-in-out', label: 'Ease In-Out (cinematic)' },
+  ];
+
+  actualDurationSeconds(): number {
+    return getEffectiveDurationSeconds(this.videoSettings());
+  }
+
+  updateAnimationSpeed(event: Event): void {
+    const speed = Number((event.target as HTMLSelectElement).value);
+    if (!this.speeds.includes(speed as AnimationSpeed)) return;
+    this.stopAnimation.emit();
+    this.updateVideoSettings.emit({ ...this.videoSettings(), speed: speed as AnimationSpeed });
+  }
+
+  updateAnimationEasing(event: Event): void {
+    const easing = (event.target as HTMLSelectElement).value;
+    if (!this.easings.some((option) => option.value === easing)) return;
+    this.stopAnimation.emit();
+    this.updateVideoSettings.emit({ ...this.videoSettings(), easing: easing as AnimationEasing });
+  }
+
   readonly videoSettings = input.required<VideoExportSettings>();
   readonly isPlaying = input(false);
 
