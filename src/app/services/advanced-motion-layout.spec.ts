@@ -53,6 +53,16 @@ describe('advanced motion layout', () => {
     expect(large.height).toBe(900);
   });
 
+  it('keeps resized silhouettes anchored around an off-centre detected player', () => {
+    const result = getEchoLayout(
+      10, 10, 1000, 600,
+      { ...base, intensity: 0, echoScale: 150 }, 200, 400,
+    );
+    expect(result.x).toBeCloseTo(-100);
+    expect(result.y).toBeCloseTo(-200);
+    expect(result.width).toBe(1500);
+  });
+
   it('provides distinct fade curves', () => {
     expect(getTrailFade(0.5, 'classic')).toBeCloseTo(0.825);
     expect(getTrailFade(0.5, 'linear')).toBeCloseTo(0.575);
