@@ -1,4 +1,5 @@
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
+import type { ToolSection } from '../../models/tool-section.type';
 
 type CollapsibleSectionState = {
   activeSection: ToolSection | null;
