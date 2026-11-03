@@ -94,9 +94,9 @@ export class VideoClipFramesService {
       frame.source, frame.player, playerSettings, frame.ball, ballSettings,
       frame.tracking
         ? {
-          player: frame.tracking.player.status === 'detected'
+          player: (frame.tracking.player.status === 'detected' || frame.tracking.player.status === 'corrected')
             ? frame.tracking.player.center : null,
-          ball: frame.tracking.ball.status === 'detected'
+          ball: (frame.tracking.ball.status === 'detected' || frame.tracking.ball.status === 'corrected')
             ? frame.tracking.ball.center : null,
         }
         : undefined,
