@@ -8,11 +8,12 @@ import { EchoLayout, getEchoLayout, getGradientWeights } from './advanced-motion
 })
 export class MotionTrailsService {
   // Cache only the current image/mask pair to avoid retaining old large canvases.
-  private cachedSubject: {
+  private cachedSubjects: Array<{
     image: HTMLImageElement;
     mask: HTMLCanvasElement;
     canvas: HTMLCanvasElement;
-  } | null = null;
+    anchor: { x: number; y: number };
+  }> = [];
 
   private subjectAnchor: { x: number; y: number } | null = null;
 
@@ -38,7 +39,7 @@ export class MotionTrailsService {
   }> = [];
 
   invalidateSubjectCache(): void {
-    this.cachedSubject = null;
+    this.cachedSubjects = [];
     this.subjectAnchor = null;
     this.coloredSubjects = [];
     this.glowSubjects = [];
@@ -128,20 +129,21 @@ export class MotionTrailsService {
   }
 
   private getSubject(image: HTMLImageElement, mask: HTMLCanvasElement): HTMLCanvasElement {
-    const cached = this.cachedSubject;
-
-    if (
-      cached &&
-      cached.image === image &&
-      cached.mask === mask &&
-      cached.canvas.width === image.naturalWidth &&
-      cached.canvas.height === image.naturalHeight
-    ) {
+    const cached = this.cachedSubjects.find((entry) =>
+      entry.image === image && entry.mask === mask &&
+      entry.canvas.width === image.naturalWidth &&
+      entry.canvas.height === image.naturalHeight);
+    if (cached) {
+      this.subjectAnchor = cached.anchor;
       return cached.canvas;
     }
 
     const canvas = this.extractSubject(image, mask);
-    this.cachedSubject = { image, mask, canvas };
+    const anchor = this.subjectAnchor ?? {
+      x: image.naturalWidth / 2, y: image.naturalHeight / 2,
+    };
+    this.cachedSubjects.push({ image, mask, canvas, anchor });
+    if (this.cachedSubjects.length > 2) this.cachedSubjects.shift();
     return canvas;
   }
 
@@ -149,6 +151,24 @@ export class MotionTrailsService {
     image: HTMLImageElement,
     mask: HTMLCanvasElement,
     settings: MotionSettings,
+    ballMask?: HTMLCanvasElement | null,
+    ballSettings?: MotionSettings,
+  ): HTMLCanvasElement {
+    const output = this.renderLayer(image, mask, settings, true);
+    if (ballMask && ballSettings) {
+      const ballLayer = this.renderLayer(image, ballMask, ballSettings, false);
+      const ctx = output.getContext('2d');
+      if (!ctx) throw new Error('Could not composite ball motion trails.');
+      ctx.drawImage(ballLayer, 0, 0);
+    }
+    return output;
+  }
+
+  private renderLayer(
+    image: HTMLImageElement,
+    mask: HTMLCanvasElement,
+    settings: MotionSettings,
+    includeBackground: boolean,
   ): HTMLCanvasElement {
     const width = image.naturalWidth;
     const height = image.naturalHeight;
@@ -204,7 +224,7 @@ export class MotionTrailsService {
     };
 
     // Original photograph as background.
-    ctx.drawImage(image, 0, 0, width, height);
+    if (includeBackground) ctx.drawImage(image, 0, 0, width, height);
 
     const intensity = Math.max(0, Math.min(1, settings.intensity / 100));
 
