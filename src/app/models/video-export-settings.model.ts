@@ -7,6 +7,8 @@ export type AnimationStyle =
   | 'heartbeat'
   | 'shimmer'
   | 'bounce';
+export type AnimationSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2;
+export type AnimationEasing = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
 export type VideoFormat = 'webm' | 'mp4';
 export type VideoResolution = '720p' | '1080p' | '4k';
 export type VideoFps = 24 | 30 | 60;
@@ -17,6 +19,8 @@ export type ExportFit = 'contain' | 'cover';
 
 export interface VideoExportSettings {
   animationStyle: AnimationStyle;
+  speed: AnimationSpeed;
+  easing: AnimationEasing;
   durationSeconds: number;
   fps: VideoFps;
   resolution: VideoResolution;
@@ -33,6 +37,8 @@ export interface VideoExportSettings {
 
 export const DEFAULT_VIDEO_EXPORT_SETTINGS: VideoExportSettings = {
   animationStyle: 'reveal',
+  speed: 1,
+  easing: 'linear',
   durationSeconds: 5,
   fps: 30,
   resolution: '1080p',
