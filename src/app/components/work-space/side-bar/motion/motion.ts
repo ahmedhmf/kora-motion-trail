@@ -26,6 +26,13 @@ export class Motion {
     this.editorStore.setActiveSubject(subject);
   }
 
+  updateDetectedBallScale(event: Event): void {
+    const scale = Number((event.target as HTMLInputElement).value);
+    if (!Number.isFinite(scale)) return;
+    this.stopAnimation.emit();
+    this.editorStore.setBallMaskScale(scale);
+  }
+
   updateBallRadius(event: Event): void {
     const radius = Number((event.target as HTMLInputElement).value);
     if (!Number.isFinite(radius)) return;
