@@ -204,6 +204,8 @@ export class Export {
         (progress) => {
           this.exportProgress.set(Math.round(progress * 100));
         },
+        this.editorStore.ballMask(),
+        this.editorStore.ballMotionSettings(),
       );
     } catch (error) {
       this.exportError.set(error instanceof Error ? error.message : 'Video export failed.');
