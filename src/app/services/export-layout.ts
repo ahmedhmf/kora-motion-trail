@@ -41,6 +41,51 @@ export function getExportDimensions(
   };
 }
 
+export interface ExportFraming {
+  fit: ExportFit;
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+export interface ExportGeometry {
+  x: number;
+  y: number;
+  drawnWidth: number;
+  drawnHeight: number;
+  // Half of available translation along each axis, in output pixels.
+  travelX: number;
+  travelY: number;
+}
+
+export function getExportGeometry(
+  sourceWidth: number,
+  sourceHeight: number,
+  width: number,
+  height: number,
+  framing: ExportFraming,
+): ExportGeometry {
+  const baseScale = framing.fit === 'cover'
+    ? Math.max(width / sourceWidth, height / sourceHeight)
+    : Math.min(width / sourceWidth, height / sourceHeight);
+  const zoom = Math.max(100, Math.min(300, framing.zoom)) / 100;
+  const drawnWidth = sourceWidth * baseScale * zoom;
+  const drawnHeight = sourceHeight * baseScale * zoom;
+  const travelX = Math.abs(width - drawnWidth) / 2;
+  const travelY = Math.abs(height - drawnHeight) / 2;
+  const offsetX = Math.max(-100, Math.min(100, framing.offsetX)) / 100;
+  const offsetY = Math.max(-100, Math.min(100, framing.offsetY)) / 100;
+
+  return {
+    x: (width - drawnWidth) / 2 + travelX * offsetX,
+    y: (height - drawnHeight) / 2 + travelY * offsetY,
+    drawnWidth,
+    drawnHeight,
+    travelX,
+    travelY,
+  };
+}
+
 export function drawExportFrame(
   ctx: CanvasRenderingContext2D,
   source: CanvasImageSource,
@@ -48,20 +93,18 @@ export function drawExportFrame(
   sourceHeight: number,
   width: number,
   height: number,
-  fit: ExportFit,
+  framing: ExportFraming,
 ): void {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, width, height);
 
-  const scale = fit === 'cover'
-    ? Math.max(width / sourceWidth, height / sourceHeight)
-    : Math.min(width / sourceWidth, height / sourceHeight);
-
-  const drawnWidth = sourceWidth * scale;
-  const drawnHeight = sourceHeight * scale;
-  const x = (width - drawnWidth) / 2;
-  const y = (height - drawnHeight) / 2;
-
-  ctx.drawImage(source, x, y, drawnWidth, drawnHeight);
+  const geometry = getExportGeometry(sourceWidth, sourceHeight, width, height, framing);
+  ctx.drawImage(
+    source,
+    geometry.x,
+    geometry.y,
+    geometry.drawnWidth,
+    geometry.drawnHeight,
+  );
 }

@@ -17,6 +17,10 @@ export interface VideoExportSettings {
   loop: boolean;
   aspectRatio: ExportAspectRatio;
   fit: ExportFit;
+  // Export-only framing. Zoom is a percentage; offsets range from -100 to 100.
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
 }
 
 export const DEFAULT_VIDEO_EXPORT_SETTINGS: VideoExportSettings = {
@@ -29,4 +33,7 @@ export const DEFAULT_VIDEO_EXPORT_SETTINGS: VideoExportSettings = {
   loop: true,
   aspectRatio: 'original',
   fit: 'contain',
+  zoom: 100,
+  offsetX: 0,
+  offsetY: 0,
 };

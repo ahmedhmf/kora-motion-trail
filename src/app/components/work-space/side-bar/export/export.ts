@@ -1,4 +1,7 @@
 import { Component, inject, input, output, signal } from '@angular/core';
+import { ExportFramePreview } from './export-frame-preview';
+import { MotionTrailsService } from '../../../../services/motion-trails.service';
+import { MotionSettings } from '../../../../models/motion-settings.model';
 import { EditorStore } from '../../../../stores/editor.store';
 import { CollapsibleSection } from '../../../../ui-components/collapsible-section/collapsible-section';
 import { ArtworkExportService } from '../../../../services/artwork-export.service';
@@ -11,7 +14,7 @@ import { getExportDimensions } from '../../../../services/export-layout';
 import { VideoExportService } from '../../../../services/video-export.service';
 
 @Component({
-  imports: [CollapsibleSection],
+  imports: [CollapsibleSection, ExportFramePreview],
   selector: 'app-export',
   styleUrl: './export.css',
   templateUrl: './export.html',
@@ -20,6 +23,7 @@ export class Export {
   readonly editorStore = inject(EditorStore);
   private readonly artworkExportService = inject(ArtworkExportService);
   private readonly videoExportService = inject(VideoExportService);
+  private readonly motionTrailsService = inject(MotionTrailsService);
 
   readonly videoSettings = input.required<VideoExportSettings>();
   readonly updateVideoSettings = output<VideoExportSettings>();
@@ -29,6 +33,58 @@ export class Export {
   readonly exportProgress = signal(0);
   readonly exportError = signal<string | null>(null);
   readonly artworkError = signal<string | null>(null);
+  private previewCache: {
+    image: HTMLImageElement;
+    mask: HTMLCanvasElement;
+    motion: MotionSettings;
+    canvas: HTMLCanvasElement;
+  } | null = null;
+
+  previewSource(): HTMLCanvasElement | HTMLImageElement | null {
+    const uploaded = this.editorStore.uploadedImage();
+    if (!uploaded) return null;
+    const mask = this.editorStore.playerMask();
+    if (!mask) return uploaded.image;
+
+    const processed = this.editorStore.processedImage();
+    if (processed) return processed;
+
+    const motion = this.editorStore.motionSettings();
+    if (
+      !this.previewCache ||
+      this.previewCache.image !== uploaded.image ||
+      this.previewCache.mask !== mask ||
+      this.previewCache.motion !== motion
+    ) {
+      this.previewCache = {
+        image: uploaded.image,
+        mask,
+        motion,
+        canvas: this.motionTrailsService.render(uploaded.image, mask, motion),
+      };
+    }
+    return this.previewCache.canvas;
+  }
+
+  updateZoom(event: Event): void {
+    const zoom = Math.max(100, Math.min(300, Number((event.target as HTMLInputElement).value)));
+    if (!Number.isFinite(zoom)) return;
+    this.updateVideoSettings.emit({ ...this.videoSettings(), zoom });
+  }
+
+  updateFramingPosition(position: { offsetX: number; offsetY: number }): void {
+    this.updateVideoSettings.emit({ ...this.videoSettings(), ...position });
+  }
+
+  resetFraming(): void {
+    this.updateVideoSettings.emit({
+      ...this.videoSettings(),
+      zoom: 100,
+      offsetX: 0,
+      offsetY: 0,
+    });
+  }
+
 
   exportDimensionsLabel(): string {
     const image = this.editorStore.uploadedImage();

@@ -26,15 +26,56 @@
               [disabled]="isExporting()"
             >
               <option value="contain">Fit entire image (black borders)</option>
-              <option value="cover">Fill frame (center crop)</option>
+              <option value="cover">Fill frame (repositionable crop)</option>
             </select>
 
             <p class="text-xs text-zinc-400">
               Output: {{ exportDimensionsLabel() }} · Applies to PNG and video.
             </p>
+
+            @if (previewSource(); as preview) {
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-zinc-300">Live Export Preview</label>
+                <app-export-frame-preview
+                  [source]="preview"
+                  [settings]="videoSettings()"
+                  [disabled]="isExporting()"
+                  (positionChange)="updateFramingPosition($event)"
+                ></app-export-frame-preview>
+                <p class="text-xs text-zinc-400">
+                  Drag the preview to position the artwork inside the export frame.
+                </p>
+              </div>
+            }
+
+            <div class="space-y-2">
+              <div class="flex justify-between">
+                <label for="export-zoom" class="text-sm text-zinc-300">Zoom</label>
+                <span class="text-xs text-cyan-400">{{ videoSettings().zoom }}%</span>
+              </div>
+              <input
+                id="export-zoom"
+                type="range"
+                min="100"
+                max="300"
+                step="5"
+                class="w-full accent-cyan-400"
+                [value]="videoSettings().zoom"
+                [disabled]="isExporting()"
+                (input)="updateZoom($event)"
+              />
+              <button
+                type="button"
+                class="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+                (click)="resetFraming()"
+                [disabled]="isExporting()"
+              >
+                Reset position &amp; zoom
+              </button>
+            </div>
             @if (videoSettings().fit === 'cover') {
               <p class="text-xs text-amber-300">
-                Center cropping may cut off the player or motion trails.
+                Fill crops outside the frame; drag or zoom to keep the player and ball visible.
               </p>
             }
           </div>
