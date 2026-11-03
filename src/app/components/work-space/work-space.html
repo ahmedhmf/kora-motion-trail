@@ -41,7 +41,7 @@
               [showPlayerControls]="hasAnimationStarted()"
               [isPlaying]="isPlaying()"
               [progress]="animationProgress()"
-              [durationSeconds]="videoSettings().durationSeconds"
+              [durationSeconds]="getEffectiveDurationSeconds(videoSettings())"
               (playRequested)="playAnimation()"
               (pauseRequested)="pauseAnimation()"
               (replayRequested)="replayAnimation()"

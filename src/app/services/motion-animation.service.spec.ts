@@ -51,6 +51,19 @@ describe('animation styles', () => {
     }
   });
 
+  it('applies easing to the actual motion while preserving the same endpoints', () => {
+    const base = { ...video, animationStyle: 'surge' as const };
+    const linear = getAnimationMotionSettings(motion, { ...base, easing: 'linear' }, 0.25);
+    const slowStart = getAnimationMotionSettings(motion, { ...base, easing: 'ease-in' }, 0.25);
+    const fastStart = getAnimationMotionSettings(motion, { ...base, easing: 'ease-out' }, 0.25);
+    expect(slowStart.intensity).toBeLessThan(linear.intensity);
+    expect(fastStart.intensity).toBeGreaterThan(linear.intensity);
+    expect(getAnimationMotionSettings(motion, { ...base, easing: 'ease-in' }, 0))
+      .toEqual(getAnimationMotionSettings(motion, { ...base, easing: 'ease-out' }, 0));
+    expect(getAnimationMotionSettings(motion, { ...base, easing: 'ease-in' }, 1))
+      .toEqual(getAnimationMotionSettings(motion, { ...base, easing: 'ease-out' }, 1));
+  });
+
   it('clamps out-of-range progress', () => {
     expect(frame('surge', -1)).toEqual(frame('surge', 0));
     expect(frame('surge', 2)).toEqual(frame('surge', 1));

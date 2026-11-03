@@ -6,6 +6,7 @@ import { MotionSettings } from '../models/motion-settings.model';
 
 import { VideoExportSettings } from '../models/video-export-settings.model';
 import { drawExportFrame, getExportDimensions } from './export-layout';
+import { getEffectiveDurationSeconds } from './animation-timing';
 
 @Injectable({
   providedIn: 'root',
@@ -89,10 +90,9 @@ export class VideoExportService {
       };
     });
 
-    const durationMs = videoSettings.durationSeconds * 1000;
-
     const fps = videoSettings.fps;
-    const totalFrames = Math.max(1, Math.round(videoSettings.durationSeconds * fps));
+    const actualDuration = getEffectiveDurationSeconds(videoSettings);
+    const totalFrames = Math.max(1, Math.round(actualDuration * fps));
 
     const frameInterval = 1000 / fps;
 
