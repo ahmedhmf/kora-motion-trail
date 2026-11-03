@@ -20,6 +20,8 @@ export class VideoExportService {
     motionSettings: MotionSettings,
     videoSettings: VideoExportSettings,
     onProgress?: (progress: number) => void,
+    ballMask?: HTMLCanvasElement | null,
+    ballMotionSettings?: MotionSettings,
   ): Promise<void> {
     if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
       throw new Error('Video recording is not supported by this browser.');
@@ -103,6 +105,8 @@ export class VideoExportService {
       motionSettings,
       videoSettings,
       0,
+      ballMask,
+      ballMotionSettings,
     );
 
     drawExportFrame(ctx, firstFrame, firstFrame.width, firstFrame.height, width, height, videoSettings);
@@ -131,6 +135,8 @@ export class VideoExportService {
           motionSettings,
           videoSettings,
           progress,
+          ballMask,
+          ballMotionSettings,
         );
 
         drawExportFrame(ctx, frame, frame.width, frame.height, width, height, videoSettings);
