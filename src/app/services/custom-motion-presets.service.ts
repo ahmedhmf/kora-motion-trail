@@ -42,9 +42,11 @@ function validSettings(value: unknown): value is MotionSettings {
     !Number.isInteger(settings['layers']) ||
     settings['layers'] < 1 || settings['layers'] > 30) return false;
   if (!['left', 'right', 'up', 'down'].includes(String(settings['direction']))) return false;
-  if (!['original', 'solid'].includes(String(settings['trailColorMode']))) return false;
+  if (!['original', 'solid', 'gradient'].includes(String(settings['trailColorMode']))) return false;
   if (typeof settings['trailColor'] !== 'string' ||
     !/^#[0-9a-fA-F]{6}$/.test(settings['trailColor'])) return false;
+  if (typeof settings['trailEndColor'] !== 'string' ||
+    !/^#[0-9a-fA-F]{6}$/.test(settings['trailEndColor'])) return false;
   if (typeof settings['glowEnabled'] !== 'boolean') return false;
   if (typeof settings['glowBlur'] !== 'number' ||
     !Number.isFinite(settings['glowBlur']) ||
@@ -55,6 +57,7 @@ function validSettings(value: unknown): value is MotionSettings {
     ['echoScale', 50, 150],
     ['pathCurve', -100, 100],
     ['echoRotation', -45, 45],
+    ['directionalBlur', 0, 30],
   ];
   if (!advancedRanges.every(([key, min, max]) =>
     typeof settings[key] === 'number' && Number.isFinite(settings[key]) &&
