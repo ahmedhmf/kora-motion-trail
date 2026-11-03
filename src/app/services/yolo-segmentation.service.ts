@@ -65,14 +65,16 @@ export class YoloSegmentationService {
 
   private overlayForClass(result: Results, cls: number): Uint8Array {
     const expectedLength = result.width * result.height * 4;
-    if (result.width <= 0 || result.height <= 0 ||
-        result.masks.length !== expectedLength) {
-      throw new Error('YOLO returned an invalid class mask overlay.');
+    if (result.width <= 0 || result.height <= 0) {
+      throw new Error('YOLO returned invalid image dimensions.');
     }
-    // Some models may produce an empty mask for a class with no matching boxes.
-    // Ignore any overlay that cannot be associated with the requested class.
+    // YOLO can return zero mask bytes if there are no detections.
+    // Treat the missing ball as an empty class mask, not an error.
     if (!result.boxes.some((box) => box.cls === cls)) {
       return new Uint8Array(expectedLength);
+    }
+    if (result.masks.length !== expectedLength) {
+      throw new Error('YOLO returned an invalid class mask overlay.');
     }
     return result.masks;
   }
