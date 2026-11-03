@@ -7,6 +7,7 @@ import {
   DEFAULT_VIDEO_EXPORT_SETTINGS,
 } from '../../models/video-export-settings.model';
 import { MotionAnimationService } from '../../services/motion-animation.service';
+import { getEffectiveDurationSeconds } from '../../services/animation-timing';
 import { SideBar } from './side-bar/side-bar';
 
 @Component({
@@ -75,7 +76,7 @@ export class WorkSpace {
       this.animationProgress.set(0);
     }
 
-    const durationMs = this.videoSettings().durationSeconds * 1000;
+    const durationMs = getEffectiveDurationSeconds(this.videoSettings()) * 1000;
 
     this.animationStartTime.set(performance.now() - this.animationProgress() * durationMs);
 
