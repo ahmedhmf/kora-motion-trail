@@ -7,6 +7,7 @@ import {
 import {
   DEFAULT_MOTION_SETTINGS, MotionSettings, TrailColorMode,
 } from '../../models/motion-settings.model';
+import { drawTrackingOverlay } from '../../services/tracking-overlay';
 
 type Subject = 'player' | 'ball';
 type Preview = 'artwork' | 'source' | 'player' | 'ball' | 'combined';
@@ -39,6 +40,7 @@ export class VideoLab implements OnDestroy {
   readonly currentSettings = computed(() =>
     this.activeSubject() === 'player' ? this.playerSettings() : this.ballSettings());
   readonly playing = signal(false);
+  readonly showTrackingOverlay = signal(true);
 
   private video: HTMLVideoElement | null = null;
   private sourceUrl: string | null = null;
@@ -145,6 +147,15 @@ export class VideoLab implements OnDestroy {
     this.busy.set(false);
     this.progress.set(0);
     this.error.set(null);
+  }
+
+  toggleTrackingOverlay(): void {
+    this.showTrackingOverlay.update((value) => !value);
+    this.drawCurrent();
+  }
+
+  currentTracking() {
+    return this.frames()[this.frameIndex()]?.tracking ?? null;
   }
 
   selectSubject(value: Subject): void {
@@ -261,6 +272,9 @@ export class VideoLab implements OnDestroy {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (selected) ctx.drawImage(selected, 0, 0);
+    if (this.showTrackingOverlay()) {
+      drawTrackingOverlay(ctx, this.frames(), this.frameIndex(), canvas.width, canvas.height);
+    }
   }
 
   ngOnDestroy(): void {
