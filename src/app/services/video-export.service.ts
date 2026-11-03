@@ -105,7 +105,7 @@ export class VideoExportService {
       0,
     );
 
-    drawExportFrame(ctx, firstFrame, firstFrame.width, firstFrame.height, width, height, videoSettings.fit);
+    drawExportFrame(ctx, firstFrame, firstFrame.width, firstFrame.height, width, height, videoSettings);
 
     recorder.start();
 
@@ -133,7 +133,7 @@ export class VideoExportService {
           progress,
         );
 
-        drawExportFrame(ctx, frame, frame.width, frame.height, width, height, videoSettings.fit);
+        drawExportFrame(ctx, frame, frame.width, frame.height, width, height, videoSettings);
 
         videoTrack.requestFrame();
 
