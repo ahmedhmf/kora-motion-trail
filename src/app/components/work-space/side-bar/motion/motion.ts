@@ -1,7 +1,12 @@
 import { Component, inject, output } from '@angular/core';
 import { CollapsibleSection } from '../../../../ui-components/collapsible-section/collapsible-section';
 import { EditorStore } from '../../../../stores/editor.store';
-import { MotionSettings } from '../../../../models/motion-settings.model';
+import { MotionSettings, MotionDirection } from '../../../../models/motion-settings.model';
+import {
+  MOTION_PRESETS,
+  MotionPresetId,
+  findMatchingMotionPreset,
+} from '../../../../models/motion-presets.model';
 
 @Component({
   imports: [CollapsibleSection],
@@ -13,13 +18,41 @@ export class Motion {
   readonly editorStore = inject(EditorStore);
 
   readonly stopAnimation = output<void>();
+  readonly presets = MOTION_PRESETS;
+
+  activePreset(): MotionPresetId | null {
+    return findMatchingMotionPreset(this.editorStore.motionSettings());
+  }
+
+  applyPreset(id: MotionPresetId): void {
+    const preset = MOTION_PRESETS.find((item) => item.id === id);
+    if (!preset) return;
+    this.updateEffect({ ...preset.settings });
+  }
+
+  updateIntensity(event: Event): void {
+    this.updateEffect({ intensity: Number((event.target as HTMLInputElement).value) });
+  }
+
+  updatePreservation(event: Event): void {
+    this.updateEffect({ preservation: Number((event.target as HTMLInputElement).value) });
+  }
+
+  updateLayers(event: Event): void {
+    this.updateEffect({ layers: Number((event.target as HTMLInputElement).value) });
+  }
+
+  updateDirection(event: Event): void {
+    const direction = (event.target as HTMLSelectElement).value;
+    if (!['left', 'right', 'up', 'down'].includes(direction)) return;
+    this.updateEffect({ direction: direction as MotionDirection });
+  }
+
 
    updateTrailStrength(event: Event): void {
     const strength = Number((event.target as HTMLInputElement).value);
 
-    this.stopAnimation.emit();
-
-    this.editorStore.updateMotionSettings({
+    this.updateEffect({
       trailStrength: strength,
     });
   }
@@ -27,9 +60,7 @@ export class Motion {
     updateTrailVisibility(event: Event): void {
     const visibility = Number((event.target as HTMLInputElement).value);
 
-    this.stopAnimation.emit();
-
-    this.editorStore.updateMotionSettings({
+    this.updateEffect({
       visibility,
     });
   }
