@@ -1,4 +1,12 @@
-export type AnimationStyle = 'reveal' | 'pulse' | 'loop';
+export type AnimationStyle =
+  | 'reveal'
+  | 'pulse'
+  | 'loop'
+  | 'reverse'
+  | 'surge'
+  | 'heartbeat'
+  | 'shimmer'
+  | 'bounce';
 export type VideoFormat = 'webm' | 'mp4';
 export type VideoResolution = '720p' | '1080p' | '4k';
 export type VideoFps = 24 | 30 | 60;

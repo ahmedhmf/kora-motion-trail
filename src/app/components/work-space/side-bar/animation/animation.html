@@ -8,10 +8,15 @@
                 [value]="videoSettings().animationStyle"
                 (change)="updateAnimationStyle($event)"
               >
-                <option value="reveal">Trail Reveal</option>
-                <option value="pulse">Pulse</option>
-                <option value="loop">Seamless Loop</option>
+                @for (style of styles; track style.id) {
+                  <option [value]="style.id">{{ style.label }}</option>
+                }
               </select>
+              @for (style of styles; track style.id) {
+                @if (style.id === videoSettings().animationStyle) {
+                  <p class="mt-2 text-xs text-zinc-400">{{ style.description }}</p>
+                }
+              }
             </div>
 
             <div>

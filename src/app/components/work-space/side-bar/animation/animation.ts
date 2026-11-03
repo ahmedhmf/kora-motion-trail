@@ -1,7 +1,8 @@
 import { Component, inject, input, output } from '@angular/core';
 import { EditorStore } from '../../../../stores/editor.store';
 import { CollapsibleSection } from '../../../../ui-components/collapsible-section/collapsible-section';
-import { VideoExportSettings } from '../../../../models/video-export-settings.model';
+import { AnimationStyle, VideoExportSettings } from '../../../../models/video-export-settings.model';
+import { ANIMATION_STYLES } from '../../../../services/motion-animation.service';
 
 @Component({
   imports: [CollapsibleSection],
@@ -11,6 +12,7 @@ import { VideoExportSettings } from '../../../../models/video-export-settings.mo
 })
 export class Animation {
   readonly editorStore = inject(EditorStore);
+  readonly styles = ANIMATION_STYLES;
   readonly videoSettings = input.required<VideoExportSettings>();
   readonly isPlaying = input(false);
 
@@ -21,14 +23,14 @@ export class Animation {
   updateAnimationStyle(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
 
-    if (value !== 'reveal' && value !== 'pulse' && value !== 'loop') {
+    if (!this.styles.some((style) => style.id === value)) {
       return;
     }
 
     this.stopAnimation.emit();
     this.updateVideoSettings.emit({
       ...this.videoSettings(),
-      animationStyle: value,
+      animationStyle: value as AnimationStyle,
     });
   }
 
