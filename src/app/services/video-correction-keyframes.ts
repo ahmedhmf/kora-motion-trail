@@ -127,6 +127,7 @@ export function applyVideoCorrections(
     let player = frame.player;
     let ball = frame.ball;
     let corrected = false;
+    const correctedCenters: Partial<Record<'player' | 'ball', TrackCenter>> = {};
 
     for (const subject of ['player', 'ball'] as const) {
       const near = nearestCorrection(corrections, subject, index);
@@ -167,6 +168,14 @@ export function applyVideoCorrections(
 
       if (!nextMask) continue;
       corrected = true;
+      correctedCenters[subject] = hasForeground(ownMask) && donorCenter
+        ? {
+          x: (currentCenter?.x ?? donorCenter.x) +
+            (keyframe.center.x - donorCenter.x) * influence,
+          y: (currentCenter?.y ?? donorCenter.y) +
+            (keyframe.center.y - donorCenter.y) * influence,
+        }
+        : currentCenter ?? keyframe.center;
       if (subject === 'player') player = nextMask;
       else ball = nextMask;
     }
@@ -175,6 +184,16 @@ export function applyVideoCorrections(
     // Keep the masks exclusive after translating either subject.
     if (ball) player = excludeBallFromPlayer(player, ball);
     const combined = ball ? combineSubjectMasks(player, ball) : player;
-    return { ...frame, player, ball, combined };
+    const tracking = frame.tracking && {
+      player: correctedCenters.player
+        ? { ...frame.tracking.player, status: 'corrected' as const,
+            center: correctedCenters.player, detectedCenter: null, box: null }
+        : frame.tracking.player,
+      ball: correctedCenters.ball
+        ? { ...frame.tracking.ball, status: 'corrected' as const,
+            center: correctedCenters.ball, detectedCenter: null, box: null }
+        : frame.tracking.ball,
+    };
+    return { ...frame, player, ball, combined, tracking };
   });
 }
