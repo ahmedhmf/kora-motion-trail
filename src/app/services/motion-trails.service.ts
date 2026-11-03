@@ -6,6 +6,35 @@ import { MotionSettings } from '../models/motion-settings.model';
   providedIn: 'root',
 })
 export class MotionTrailsService {
+  // Cache only the current image/mask pair to avoid retaining old large canvases.
+  private cachedSubject: {
+    image: HTMLImageElement;
+    mask: HTMLCanvasElement;
+    canvas: HTMLCanvasElement;
+  } | null = null;
+
+  invalidateSubjectCache(): void {
+    this.cachedSubject = null;
+  }
+
+  private getSubject(image: HTMLImageElement, mask: HTMLCanvasElement): HTMLCanvasElement {
+    const cached = this.cachedSubject;
+
+    if (
+      cached &&
+      cached.image === image &&
+      cached.mask === mask &&
+      cached.canvas.width === image.naturalWidth &&
+      cached.canvas.height === image.naturalHeight
+    ) {
+      return cached.canvas;
+    }
+
+    const canvas = this.extractSubject(image, mask);
+    this.cachedSubject = { image, mask, canvas };
+    return canvas;
+  }
+
   render(
     image: HTMLImageElement,
     mask: HTMLCanvasElement,
@@ -24,7 +53,7 @@ export class MotionTrailsService {
       throw new Error('Could not create artwork canvas.');
     }
 
-    const subject = this.extractSubject(image, mask);
+    const subject = this.getSubject(image, mask);
 
     // Original photograph as background.
     ctx.drawImage(image, 0, 0, width, height);
@@ -42,33 +71,12 @@ export class MotionTrailsService {
     const visibility = Math.max(0, Math.min(1, settings.visibility / 100));
     const baseTrailStrength = intensity * (1 - preservation * 0.65) * (settings.visibility / 100);
     const echoStrength = Math.max(0, Math.min(1, settings.trailStrength / 100));
-    // Create a blurred subject for soft streaks.
-    const blurredSubject = document.createElement('canvas');
-    blurredSubject.width = width;
-    blurredSubject.height = height;
-
-    const blurCtx = blurredSubject.getContext('2d');
-
-    if (!blurCtx) {
-      throw new Error('Could not create blur canvas.');
-    }
-
-    const blurRadius = Math.min(width, height) * 0.004 * intensity;
-
-    blurCtx.filter = `blur(${blurRadius}px)`;
-
-    // Leave room for blur around the subject.
-    // For this MVP, the blur remains clipped at image edges.
-    blurCtx.drawImage(subject, 0, 0);
-
-    blurCtx.filter = 'none';
+    // The previous implementation allocated and blurred a full-size canvas
+    // here, but never drew it. Avoid that work on every animation frame.
 
     // -------------------------------------
     // PASS 1: Continuous directional streaks
     // -------------------------------------
-
-    // Dense sampling creates a smoother trail.
-    const streakSteps = Math.max(30, Math.min(120, Math.round(maxDistance / 5)));
 
     for (let i = layers; i >= 1; i--) {
       const progress = i / layers;
