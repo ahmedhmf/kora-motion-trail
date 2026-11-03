@@ -154,10 +154,12 @@ export class WorkSpace {
 
     const frame = this.animationService.renderFrame(
       uploaded.image,
-      mask,
+      this.editorStore.playerOnlyMask() ?? mask,
       this.editorStore.motionSettings(),
       this.videoSettings(),
       progress,
+      this.editorStore.ballMask(),
+      this.editorStore.ballMotionSettings(),
     );
 
     this.animationFrame.set(frame);
