@@ -21,10 +21,14 @@
         [max]="editorStore.uploadedImage() ? editorStore.uploadedImage()!.width / 4 : 100"
         [value]="ball.radius" (input)="updateBallRadius($event)"
         class="w-full accent-cyan-400" />
-      <button type="button" class="text-xs text-zinc-300 underline" (click)="clearBall()">Remove ball separation</button>
+      <button type="button" class="text-xs text-zinc-300 underline" (click)="clearBall()">
+        {{ editorStore.detectedBallMask() ? 'Restore detected ball mask' : 'Remove manual ball mask' }}
+      </button>
     </div>
+  } @else if (editorStore.ballMask()) {
+    <p class="text-xs text-emerald-400">Ball detected automatically. Choose Ball to edit its motion, or use “Move Ball Selection” to correct the mask.</p>
   } @else {
-    <p class="text-xs text-zinc-400">Use “Select Ball” above the canvas to separate it, then edit its trails independently.</p>
+    <p class="text-xs text-zinc-400">No ball detected. Use “Select Ball” above the canvas to create its mask, then edit its trails independently.</p>
   }
 </div>
 </app-collapsible-section>
