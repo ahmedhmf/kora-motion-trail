@@ -87,6 +87,25 @@ export function propagatePaintedMask(
   return videoMaskFromBrightness(target, width, height);
 }
 
+export function translateVideoMask(
+  source: HTMLCanvasElement, offset: TrackCenter,
+): HTMLCanvasElement {
+  const brightness = maskBrightness(source);
+  const shifted = new Uint8ClampedArray(brightness.length);
+  const dx = Math.round(offset.x);
+  const dy = Math.round(offset.y);
+  for (let y = 0; y < source.height; y++) {
+    const ty = y + dy;
+    if (ty < 0 || ty >= source.height) continue;
+    for (let x = 0; x < source.width; x++) {
+      const tx = x + dx;
+      if (tx < 0 || tx >= source.width) continue;
+      shifted[ty * source.width + tx] = brightness[y * source.width + x];
+    }
+  }
+  return videoMaskFromBrightness(shifted, source.width, source.height);
+}
+
 export function maskCenter(mask: HTMLCanvasElement): TrackCenter | null {
   const data = maskBrightness(mask);
   let totalX = 0, totalY = 0, count = 0;
