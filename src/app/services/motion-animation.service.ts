@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { MotionTrailsService } from './motion-trails.service';
 import { MotionSettings } from '../models/motion-settings.model';
 import { AnimationStyle, VideoExportSettings } from '../models/video-export-settings.model';
+import { easeAnimationProgress } from './animation-timing';
 
 const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
@@ -12,7 +13,7 @@ export function getAnimationMotionSettings(
   video: VideoExportSettings,
   progress: number,
 ): MotionSettings {
-  const t = clamp(progress);
+  const t = easeAnimationProgress(clamp(progress), video.easing);
   let visibilityLevel = 1;
   let distanceLevel = 1;
   let layersLevel = 1;
