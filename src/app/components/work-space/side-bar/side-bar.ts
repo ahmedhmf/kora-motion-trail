@@ -13,10 +13,10 @@ import { Export } from './export/export';
 })
 export class SideBar {
   readonly videoSettings = input.required<VideoExportSettings>();
+  readonly isPlaying = input(false);
   readonly stopAnimation = output<void>();
   readonly playAnimation = output<void>();
   readonly updateVideoSettings = output<VideoExportSettings>();
-
 
   onStopAnimation(): void {
     this.stopAnimation.emit();

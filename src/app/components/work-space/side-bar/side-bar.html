@@ -7,7 +7,17 @@
 
   <app-mask></app-mask>
   <app-motion (stopAnimation)="onStopAnimation()"></app-motion>
-  <app-animation (stopAnimation)="onStopAnimation()" (playAnimation)="onPlayAnimation()"></app-animation>
-  <app-export [videoSettings]="videoSettings()" (updateVideoSettings)="onUpdateVideoSettings($event)" (stopAnimation)="onStopAnimation()"></app-export>
+  <app-animation
+    [videoSettings]="videoSettings()"
+    [isPlaying]="isPlaying()"
+    (stopAnimation)="onStopAnimation()"
+    (playAnimation)="onPlayAnimation()"
+    (updateVideoSettings)="onUpdateVideoSettings($event)"
+  ></app-animation>
+  <app-export
+    [videoSettings]="videoSettings()"
+    (updateVideoSettings)="onUpdateVideoSettings($event)"
+    (stopAnimation)="onStopAnimation()"
+  ></app-export>
   <div class="space-y-7"></div>
 </aside>

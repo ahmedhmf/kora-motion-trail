@@ -1,10 +1,7 @@
-import { Component, signal, inject, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { EditorStore } from '../../../../stores/editor.store';
 import { CollapsibleSection } from '../../../../ui-components/collapsible-section/collapsible-section';
-import {
-  DEFAULT_VIDEO_EXPORT_SETTINGS,
-  VideoExportSettings,
-} from '../../../../models/video-export-settings.model';
+import { VideoExportSettings } from '../../../../models/video-export-settings.model';
 
 @Component({
   imports: [CollapsibleSection],
@@ -14,14 +11,12 @@ import {
 })
 export class Animation {
   readonly editorStore = inject(EditorStore);
-  readonly videoSettings = signal<VideoExportSettings>({
-    ...DEFAULT_VIDEO_EXPORT_SETTINGS,
-  });
+  readonly videoSettings = input.required<VideoExportSettings>();
+  readonly isPlaying = input(false);
 
   readonly stopAnimation = output<void>();
   readonly playAnimation = output<void>();
-
-  readonly isPlaying = signal(false);
+  readonly updateVideoSettings = output<VideoExportSettings>();
 
   updateAnimationStyle(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
@@ -31,25 +26,23 @@ export class Animation {
     }
 
     this.stopAnimation.emit();
-
-    this.videoSettings.update((settings) => ({
-      ...settings,
+    this.updateVideoSettings.emit({
+      ...this.videoSettings(),
       animationStyle: value,
-    }));
+    });
   }
 
   updateVideoDuration(event: Event): void {
-    const value = Number((event.target as HTMLSelectElement).value);
+    const duration = Number((event.target as HTMLSelectElement).value);
 
-    if (!Number.isFinite(value) || value <= 0) {
+    if (!Number.isFinite(duration) || duration <= 0) {
       return;
     }
 
     this.stopAnimation.emit();
-
-    this.videoSettings.update((settings) => ({
-      ...settings,
-      durationSeconds: value,
-    }));
+    this.updateVideoSettings.emit({
+      ...this.videoSettings(),
+      durationSeconds: duration,
+    });
   }
 }
