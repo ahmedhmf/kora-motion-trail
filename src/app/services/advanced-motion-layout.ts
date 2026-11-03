@@ -19,7 +19,7 @@ export interface EchoLayout {
   pivotX: number;
   pivotY: number;
   rotationRadians: number;
-
+}
 
 export function getEchoLayout(
   index: number,
