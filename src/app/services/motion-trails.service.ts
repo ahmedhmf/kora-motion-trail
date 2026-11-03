@@ -16,29 +16,39 @@ export class MotionTrailsService {
 
   private subjectAnchor: { x: number; y: number } | null = null;
 
-  private coloredSubject: {
+  // Keep at most two tint/blur variants for a gradient. Never accumulate
+  // canvases across images or when the user experiments with colors.
+  private coloredSubjects: Array<{
     source: HTMLCanvasElement;
     color: string;
     canvas: HTMLCanvasElement;
-  } | null = null;
-  private glowSubject: {
+  }> = [];
+  private glowSubjects: Array<{
     source: HTMLCanvasElement;
     blur: number;
     canvas: HTMLCanvasElement;
     padding: number;
-  } | null = null;
+  }> = [];
+  private streakSubjects: Array<{
+    source: HTMLCanvasElement;
+    amount: number;
+    angle: number;
+    canvas: HTMLCanvasElement;
+    padding: number;
+  }> = [];
 
   invalidateSubjectCache(): void {
     this.cachedSubject = null;
     this.subjectAnchor = null;
-    this.coloredSubject = null;
-    this.glowSubject = null;
+    this.coloredSubjects = [];
+    this.glowSubjects = [];
+    this.streakSubjects = [];
   }
 
   private getColoredSubject(subject: HTMLCanvasElement, color: string): HTMLCanvasElement {
-    if (this.coloredSubject?.source === subject && this.coloredSubject.color === color) {
-      return this.coloredSubject.canvas;
-    }
+    const cached = this.coloredSubjects.find((entry) =>
+      entry.source === subject && entry.color === color);
+    if (cached) return cached.canvas;
 
     const canvas = document.createElement('canvas');
     canvas.width = subject.width;
@@ -52,8 +62,8 @@ export class MotionTrailsService {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.globalCompositeOperation = 'source-over';
 
-    this.coloredSubject = { source: subject, color, canvas };
-    this.glowSubject = null;
+    this.coloredSubjects.push({ source: subject, color, canvas });
+    if (this.coloredSubjects.length > 2) this.coloredSubjects.shift();
     return canvas;
   }
 
@@ -61,9 +71,9 @@ export class MotionTrailsService {
     canvas: HTMLCanvasElement;
     padding: number;
   } {
-    if (this.glowSubject?.source === source && this.glowSubject.blur === blur) {
-      return this.glowSubject;
-    }
+    const cached = this.glowSubjects.find((entry) =>
+      entry.source === source && entry.blur === blur);
+    if (cached) return cached;
 
     // Blur is constructed only when its source or radius changes, not each frame.
     const padding = Math.ceil(blur * 3);
@@ -77,8 +87,44 @@ export class MotionTrailsService {
     ctx.drawImage(source, padding, padding);
     ctx.filter = 'none';
 
-    this.glowSubject = { source, blur, canvas, padding };
-    return this.glowSubject;
+    const result = { source, blur, canvas, padding };
+    this.glowSubjects.push(result);
+    if (this.glowSubjects.length > 2) this.glowSubjects.shift();
+    return result;
+  }
+
+  private getDirectionalStreak(
+    source: HTMLCanvasElement,
+    amount: number,
+    angle: number,
+  ): { canvas: HTMLCanvasElement; padding: number } {
+    const cached = this.streakSubjects.find((entry) =>
+      entry.source === source && entry.amount === amount && entry.angle === angle);
+    if (cached) return cached;
+    const padding = Math.ceil(amount) + 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = source.width + padding * 2;
+    canvas.height = source.height + padding * 2;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not render directional motion blur.');
+
+    const radians = angle * Math.PI / 180;
+    // Multiple translucent copies form a one-directional streak rather than
+    // the uniform halo produced by canvas filter: blur().
+    for (let step = 8; step >= 1; step--) {
+      const fraction = step / 8;
+      ctx.globalAlpha = 0.2 * (1 - fraction * 0.6);
+      ctx.drawImage(
+        source,
+        padding + Math.cos(radians) * amount * fraction,
+        padding - Math.sin(radians) * amount * fraction,
+      );
+    }
+    ctx.globalAlpha = 1;
+    const result = { source, amount, angle, canvas, padding };
+    this.streakSubjects.push(result);
+    if (this.streakSubjects.length > 2) this.streakSubjects.shift();
+    return result;
   }
 
   private getSubject(image: HTMLImageElement, mask: HTMLCanvasElement): HTMLCanvasElement {
@@ -118,14 +164,44 @@ export class MotionTrailsService {
     }
 
     const subject = this.getSubject(image, mask);
-    const trailSource = settings.trailColorMode === 'solid'
-      ? this.getColoredSubject(subject, settings.trailColor)
-      : subject;
-    const glowBlur = Math.max(0, Math.min(100, settings.glowBlur));
-    const glow = settings.glowEnabled && glowBlur > 0
-      ? this.getGlowSubject(trailSource, glowBlur)
+    const gradient = settings.trailColorMode === 'gradient';
+    const primarySource = settings.trailColorMode === 'original'
+      ? subject : this.getColoredSubject(subject, settings.trailColor);
+    const secondarySource = gradient
+      ? this.getColoredSubject(subject, settings.trailEndColor)
       : null;
+    const glowBlur = Math.max(0, Math.min(100, settings.glowBlur));
+    const blurAmount = Math.max(0, Math.min(30, settings.directionalBlur));
     const glowIntensity = Math.max(0, Math.min(1, settings.glowIntensity / 100));
+    const anchorX = this.subjectAnchor?.x ?? width / 2;
+    const anchorY = this.subjectAnchor?.y ?? height / 2;
+
+    // Cached per active color. The two gradient endpoints are composited with
+    // weights based on echo distance, avoiding per-frame pixel processing.
+    const drawTrail = (echo: EchoLayout, opacity: number, streaks: boolean): void => {
+      if (opacity <= 0) return;
+      const progress = echo.progress;
+      const sources: Array<{ source: HTMLCanvasElement; weight: number }> =
+        secondarySource
+          ? [{ source: primarySource, weight: 1 - progress },
+             { source: secondarySource, weight: progress }]
+          : [{ source: primarySource, weight: 1 }];
+      for (const { source, weight } of sources) {
+        if (weight <= 0) continue;
+        const alpha = opacity * weight;
+        if (settings.glowEnabled && glowBlur > 0 && glowIntensity > 0) {
+          const glow = this.getGlowSubject(source, glowBlur);
+          this.drawEcho(ctx, glow.canvas, echo, Math.min(1, alpha * glowIntensity),
+            glow.padding, anchorX, anchorY);
+        }
+        if (streaks && blurAmount > 0) {
+          const streak = this.getDirectionalStreak(source, blurAmount, settings.directionAngle);
+          this.drawEcho(ctx, streak.canvas, echo, alpha * 0.75,
+            streak.padding, anchorX, anchorY);
+        }
+        this.drawEcho(ctx, source, echo, alpha, 0, anchorX, anchorY);
+      }
+    };
 
     // Original photograph as background.
     ctx.drawImage(image, 0, 0, width, height);
@@ -160,12 +236,7 @@ export class MotionTrailsService {
       // weaken the repeated silhouettes.
       const opacity = Math.min(1, echoStrength * visibility * fade);
 
-      if (glow && glowIntensity > 0) {
-        this.drawEcho(ctx, glow.canvas, echo, Math.min(1, opacity * glowIntensity),
-          glow.padding, this.subjectAnchor?.x ?? width / 2, this.subjectAnchor?.y ?? height / 2);
-      }
-      this.drawEcho(ctx, trailSource, echo, opacity, 0,
-        this.subjectAnchor?.x ?? width / 2, this.subjectAnchor?.y ?? height / 2);
+      drawTrail(echo, opacity, true);
     }
 
     // -------------------------------------
@@ -184,8 +255,7 @@ export class MotionTrailsService {
       // User controls how strong the repeated silhouettes are.
       const opacity = baseTrailStrength * echoStrength * fade * 0.012;
 
-      this.drawEcho(ctx, trailSource, echo, opacity, 0,
-        this.subjectAnchor?.x ?? width / 2, this.subjectAnchor?.y ?? height / 2);
+      drawTrail(echo, opacity, false);
     }
 
     // -------------------------------------
