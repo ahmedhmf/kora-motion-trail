@@ -16,6 +16,22 @@ describe('animation styles', () => {
     ]);
   });
 
+  it('can animate player and ball with different directions and colors independently', () => {
+    const player = getAnimationMotionSettings(
+      { ...motion, directionAngle: 180, trailColor: '#00e5ff' },
+      { ...video, animationStyle: 'surge' }, 0.5,
+    );
+    const ball = getAnimationMotionSettings(
+      { ...motion, directionAngle: 30, trailColor: '#ff0000', layers: 4 },
+      { ...video, animationStyle: 'surge' }, 0.5,
+    );
+    expect(player.directionAngle).toBe(180);
+    expect(ball.directionAngle).toBe(30);
+    expect(player.trailColor).toBe('#00e5ff');
+    expect(ball.trailColor).toBe('#ff0000');
+    expect(player.layers).not.toBe(ball.layers);
+  });
+
   it('retains the original trail strength and source settings', () => {
     for (const style of ANIMATION_STYLES) {
       const settings = frame(style.id, 0.42);
