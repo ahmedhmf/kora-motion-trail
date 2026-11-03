@@ -24,6 +24,24 @@ export class WorkSpace {
 
   readonly isEditingMask = signal(false);
   readonly showMask = signal(false);
+  readonly maskPreview = signal<'artwork' | 'player' | 'ball' | 'combined'>('artwork');
+
+  previewMask(): HTMLCanvasElement | null {
+    switch (this.maskPreview()) {
+      case 'player': return this.editorStore.playerOnlyMask();
+      case 'ball': return this.editorStore.ballMask();
+      case 'combined': return this.editorStore.playerMask();
+      default: return null;
+    }
+  }
+
+  selectMaskPreview(mode: 'artwork' | 'player' | 'ball' | 'combined'): void {
+    this.stopAnimation();
+    this.selectingBall.set(false);
+    this.editingMotion.set(false);
+    this.maskPreview.set(mode);
+  }
+
   readonly selectingBall = signal(false);
   readonly editingMotion = signal(false);
 
@@ -31,12 +49,14 @@ export class WorkSpace {
     this.stopAnimation();
     this.selectingBall.update((value) => !value);
     this.editingMotion.set(false);
+    this.maskPreview.set('artwork');
   }
 
   toggleMotionHandles(): void {
     this.stopAnimation();
     this.editingMotion.update((value) => !value);
     this.selectingBall.set(false);
+    this.maskPreview.set('artwork');
   }
 
   onBallPicked(point: { x: number; y: number }): void {
@@ -70,6 +90,7 @@ export class WorkSpace {
     this.stopAnimation();
     this.selectingBall.set(false);
     this.editingMotion.set(false);
+    this.maskPreview.set('artwork');
 
     // Upload and decode the image.
     await this.editorStore.uploadImage(file);
