@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SideBar } from './side-bar';
+import { DEFAULT_VIDEO_EXPORT_SETTINGS } from '../../../models/video-export-settings.model';
 
 describe('SideBar', () => {
   let component: SideBar;
@@ -12,6 +13,7 @@ describe('SideBar', () => {
 
     fixture = TestBed.createComponent(SideBar);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('videoSettings', { ...DEFAULT_VIDEO_EXPORT_SETTINGS });
     await fixture.whenStable();
   });
 

@@ -1,8 +1,8 @@
         <app-collapsible-section section="mask" title="Mask" icon="🎭">
-          <h3 class="text-sm font-semibold">Player Detection</h3>
+          <h3 class="text-sm font-semibold">Player &amp; Ball Detection</h3>
 
           <p class="mt-2 text-xs leading-5 text-zinc-400">
-            Automatically detect the footballer and generate a segmentation mask.
+            Detect player and ball separately and create three masks: Player, Ball and Combined.
           </p>
 
           <button
@@ -14,17 +14,23 @@
             (click)="detectPlayer()"
           >
             @if (editorStore.isDetectingPlayer()) {
-              Detecting Player...
+              Detecting Player &amp; Ball...
             } @else if (editorStore.playerMask()) {
               Detect Again
             } @else {
-              Auto Detect Player
+              Detect Player &amp; Ball
             }
           </button>
 
           <!-- DETECTION STATUS -->
           @if (editorStore.playerMask()) {
-            <p class="mt-3 text-xs text-emerald-400">Player mask generated successfully.</p>
+            <p class="mt-3 text-xs text-emerald-400">Player and combined masks are ready.</p>
+            @if (editorStore.ballMask()) {
+              <p class="mt-1 text-xs text-emerald-400">Ball mask is ready. Adjust Player and Ball effects independently under Subjects.</p>
+            } @else {
+              <p class="mt-1 text-xs text-amber-300">No ball was detected. Click Select Ball above the canvas to create its mask manually.</p>
+            }
+            <p class="mt-2 text-xs text-zinc-400">Preview all available masks above the canvas.</p>
           }
 
           <!-- DETECTION ERROR -->
@@ -34,16 +40,4 @@
             </p>
           }
 
-          <!-- MASK ACTIONS -->
-          @if (editorStore.playerMask()) {
-            <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              <button
-                type="button"
-                class="min-h-11 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
-                (click)="toggleMaskPreview()"
-              >
-                {{ showMask() ? 'Show Original' : 'Show Player Mask' }}
-              </button>
-            </div>
-          }
         </app-collapsible-section>

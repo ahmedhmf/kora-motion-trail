@@ -21,6 +21,29 @@
         </div>
       }
       @if (editorStore.playerMask()) {
+        <div class="mb-3 space-y-2">
+          <p class="text-xs font-medium text-zinc-300">Preview segmentation masks</p>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" (click)="selectMaskPreview('artwork')"
+              class="rounded-lg border px-3 py-2 text-xs"
+              [class]="maskPreview() === 'artwork' ? 'border-cyan-400 text-white' : 'border-zinc-700 text-zinc-300'">Artwork</button>
+            <button type="button" (click)="selectMaskPreview('player')"
+              class="rounded-lg border px-3 py-2 text-xs"
+              [class]="maskPreview() === 'player' ? 'border-cyan-400 text-white' : 'border-zinc-700 text-zinc-300'">Player mask</button>
+            <button type="button" (click)="selectMaskPreview('ball')"
+              [disabled]="!editorStore.ballMask()"
+              class="rounded-lg border px-3 py-2 text-xs disabled:opacity-40"
+              [class]="maskPreview() === 'ball' ? 'border-cyan-400 text-white' : 'border-zinc-700 text-zinc-300'">Ball mask</button>
+            <button type="button" (click)="selectMaskPreview('combined')"
+              class="rounded-lg border px-3 py-2 text-xs"
+              [class]="maskPreview() === 'combined' ? 'border-cyan-400 text-white' : 'border-zinc-700 text-zinc-300'">Combined mask</button>
+          </div>
+          @if (!editorStore.ballMask()) {
+            <p class="text-xs text-amber-300">Sports ball not detected. Use Select Ball to mark it manually.</p>
+          }
+        </div>
+      }
+      @if (editorStore.playerMask()) {
         <div class="mb-3 flex flex-wrap gap-2">
           <button type="button" (click)="toggleMotionHandles()"
             class="rounded-lg border px-3 py-2 text-xs"
@@ -53,8 +76,8 @@
             <app-artwork-canvas
               class="block w-full min-w-0"
               [image]="uploaded"
-              [mask]="editorStore.playerOnlyMask() ?? editorStore.playerMask()"
-              [showMask]="showMask()"
+              [mask]="maskPreview() === 'artwork' ? (editorStore.playerOnlyMask() ?? editorStore.playerMask()) : previewMask()"
+              [showMask]="maskPreview() !== 'artwork'"
               [processedImage]="editorStore.processedImage()"
               [animationFrame]="animationFrame()"
               [motionSettings]="editorStore.currentMotionSettings()"

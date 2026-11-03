@@ -13,6 +13,9 @@ describe('CollapsibleSection', () => {
 
     fixture = TestBed.createComponent(CollapsibleSection);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('section', 'mask');
+    fixture.componentRef.setInput('title', 'Mask');
+    fixture.componentRef.setInput('icon', '🎭');
     await fixture.whenStable();
   });
 
