@@ -39,6 +39,7 @@
                 <app-export-frame-preview
                   [source]="preview"
                   [settings]="videoSettings()"
+                  [disabled]="isExporting()"
                   (positionChange)="updateFramingPosition($event)"
                 ></app-export-frame-preview>
                 <p class="text-xs text-zinc-400">
