@@ -1,6 +1,9 @@
 import type { TrackCenter, TrackedSubject } from './subject-tracking';
 import type { SegmentedClipFrame } from './video-clip-frames.service';
 import { combineSubjectMasks, excludeBallFromPlayer } from './subject-masks';
+import {
+  maskCenter, propagatePaintedMask, translateVideoMask,
+} from './video-mask-paint';
 
 export const CORRECTION_PROPAGATION_FRAMES = 2;
 
@@ -10,6 +13,8 @@ export interface VideoCorrectionKeyframe {
   center: TrackCenter;
   /** Only used to create a manual circular ball mask when no ball was detected. */
   radius: number;
+  /** An explicit painted grayscale mask. Original source segmentation is retained. */
+  paintedMask?: HTMLCanvasElement;
 }
 
 export function validCorrection(
@@ -142,7 +147,24 @@ export function applyVideoCorrections(
         frame.tracking?.[subject].center ?? null;
       let nextMask: HTMLCanvasElement | null = null;
 
-      if (hasForeground(ownMask) && donorCenter) {
+      if (keyframe.paintedMask) {
+        if (keyframe.paintedMask.width !== width || keyframe.paintedMask.height !== height) {
+          throw new Error('Paint keyframe mask dimensions are invalid.');
+        }
+        // Painted edits win over a position keyframe at this frame. Reconstruct
+        // from the original source each time; no cumulative edits.
+        if (index === keyframe.frame) {
+          nextMask = keyframe.paintedMask;
+        } else {
+          const anchor = donorCenter ?? keyframe.center;
+          const target = currentCenter ?? keyframe.center;
+          const offset = { x: target.x - anchor.x, y: target.y - anchor.y };
+          nextMask = hasForeground(ownMask)
+            ? propagatePaintedMask(donorMask, keyframe.paintedMask, ownMask,
+                offset, influence)
+            : translateVideoMask(keyframe.paintedMask, offset);
+        }
+      } else if (hasForeground(ownMask) && donorCenter) {
         // Smoothly fade the user correction back to YOLO's own segmentation.
         const dx = (keyframe.center.x - donorCenter.x) * influence;
         const dy = (keyframe.center.y - donorCenter.y) * influence;
@@ -168,7 +190,9 @@ export function applyVideoCorrections(
 
       if (!nextMask) continue;
       corrected = true;
-      correctedCenters[subject] = hasForeground(ownMask) && donorCenter
+      correctedCenters[subject] = keyframe.paintedMask
+        ? maskCenter(nextMask) ?? keyframe.center
+        : hasForeground(ownMask) && donorCenter
         ? {
           x: (currentCenter?.x ?? donorCenter.x) +
             (keyframe.center.x - donorCenter.x) * influence,
