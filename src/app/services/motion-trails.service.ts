@@ -14,6 +14,8 @@ export class MotionTrailsService {
     canvas: HTMLCanvasElement;
   } | null = null;
 
+  private subjectAnchor: { x: number; y: number } | null = null;
+
   private coloredSubject: {
     source: HTMLCanvasElement;
     color: string;
@@ -28,6 +30,7 @@ export class MotionTrailsService {
 
   invalidateSubjectCache(): void {
     this.cachedSubject = null;
+    this.subjectAnchor = null;
     this.coloredSubject = null;
     this.glowSubject = null;
   }
@@ -144,7 +147,10 @@ export class MotionTrailsService {
     // -------------------------------------
 
     for (let i = layers; i >= 1; i--) {
-      const echo = getEchoLayout(i, layers, width, height, settings);
+      const echo = getEchoLayout(
+        i, layers, width, height, settings,
+        this.subjectAnchor?.x, this.subjectAnchor?.y,
+      );
 
       // Strong echoes, including distant copies.
       const fade = echo.fade;
@@ -234,17 +240,31 @@ export class MotionTrailsService {
     const imageData = maskCtx.getImageData(0, 0, width, height);
 
     const pixels = imageData.data;
+    let minX = width, minY = height, maxX = -1, maxY = -1;
 
     for (let i = 0; i < pixels.length; i += 4) {
       // White mask = opaque subject.
       // Black mask = transparent background.
       const brightness = pixels[i];
+      if (brightness > 10) {
+        const pixel = i / 4;
+        const x = pixel % width;
+        const y = Math.floor(pixel / width);
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
 
       pixels[i] = 255;
       pixels[i + 1] = 255;
       pixels[i + 2] = 255;
       pixels[i + 3] = brightness;
     }
+
+    this.subjectAnchor = maxX >= minX
+      ? { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+      : { x: width / 2, y: height / 2 };
 
     maskCtx.putImageData(imageData, 0, 0);
 
