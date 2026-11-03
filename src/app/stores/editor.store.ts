@@ -10,7 +10,10 @@ import { DEFAULT_MASK_BRUSH, MaskBrushSettings } from '../models/mask-brush.mode
 import { YoloSegmentationService } from '../services/yolo-segmentation.service';
 import { MotionTrailsService } from '../services/motion-trails.service';
 import { BallSelection, MotionSubject, getBallSelectionAt } from '../models/subject-selection.model';
-import { splitSubjectMasks, combineSubjectMasks } from '../services/subject-masks';
+import {
+  splitSubjectMasks, combineSubjectMasks, cloneBallMask,
+  paintBallMaskStroke, rebuildMasksFromBall, type BallBrushMode,
+} from '../services/subject-masks';
 
 type EditorState = {
   uploadedImage: UploadedImage | null;
@@ -23,6 +26,12 @@ type EditorState = {
   activeSubject: MotionSubject;
   ballSelection: BallSelection | null;
   ballMask: HTMLCanvasElement | null;
+  refiningBallMask: boolean;
+  ballMaskDraft: HTMLCanvasElement | null;
+  ballMaskRevision: number;
+  ballBrushMode: BallBrushMode;
+  ballBrushSize: number;
+  showBallMaskOverlay: boolean;
   playerOnlyMask: HTMLCanvasElement | null;
   detectedPlayerMask: HTMLCanvasElement | null;
   detectedBallMask: HTMLCanvasElement | null;
@@ -42,6 +51,12 @@ const initialState: EditorState = {
   activeSubject: 'player',
   ballSelection: null,
   ballMask: null,
+  refiningBallMask: false,
+  ballMaskDraft: null,
+  ballMaskRevision: 0,
+  ballBrushMode: 'add',
+  ballBrushSize: 24,
+  showBallMaskOverlay: true,
   playerOnlyMask: null,
   detectedPlayerMask: null,
   detectedBallMask: null,
@@ -86,6 +101,9 @@ export const EditorStore = signalStore(
             uploadedImage: image,
             playerMask: null,
             ballMask: null,
+            refiningBallMask: false,
+            ballMaskDraft: null,
+            ballMaskRevision: 0,
             playerOnlyMask: null,
             detectedPlayerMask: null,
             detectedBallMask: null,
@@ -129,6 +147,72 @@ export const EditorStore = signalStore(
         patchState(store, {
           activeSubject: subject === 'ball' && store.ballMask() ? 'ball' : 'player',
         });
+      },
+
+      startBallMaskRefinement(): void {
+        const current = store.ballMask();
+        if (!current || store.refiningBallMask()) return;
+        patchState(store, {
+          refiningBallMask: true,
+          ballMaskDraft: cloneBallMask(current),
+          ballMaskRevision: 0,
+          showBallMaskOverlay: true,
+          activeSubject: 'ball',
+        });
+      },
+
+      cancelBallMaskRefinement(): void {
+        patchState(store, {
+          refiningBallMask: false,
+          ballMaskDraft: null,
+          ballMaskRevision: 0,
+        });
+      },
+
+      applyBallMaskRefinement(): void {
+        const draft = store.ballMaskDraft();
+        if (!store.refiningBallMask() || !draft) return;
+        const originalPlayer = store.detectedPlayerMask()
+          ?? store.playerOnlyMask() ?? store.playerMask();
+        if (!originalPlayer) return;
+        const result = rebuildMasksFromBall(originalPlayer, draft);
+        motionTrailsService.invalidateSubjectCache();
+        patchState(store, {
+          ballMask: result.ball,
+          playerOnlyMask: result.player,
+          playerMask: result.combined,
+          refiningBallMask: false,
+          ballMaskDraft: null,
+          ballMaskRevision: 0,
+          activeSubject: 'ball',
+        });
+        this.applyMotionTrails();
+      },
+
+      setBallBrushMode(mode: BallBrushMode): void {
+        if (mode === 'add' || mode === 'erase') patchState(store, { ballBrushMode: mode });
+      },
+
+      setBallBrushSize(size: number): void {
+        if (Number.isFinite(size)) {
+          patchState(store, { ballBrushSize: Math.max(4, Math.min(100, Math.round(size))) });
+        }
+      },
+
+      setBallMaskOverlayVisible(visible: boolean): void {
+        patchState(store, { showBallMaskOverlay: visible });
+      },
+
+      paintBallMask(
+        from: { x: number; y: number },
+        to: { x: number; y: number },
+      ): void {
+        const draft = store.ballMaskDraft();
+        if (!store.refiningBallMask() || !draft) return;
+        paintBallMaskStroke(draft, from, to, store.ballBrushSize(), store.ballBrushMode());
+        // A revision lets the canvas repaint without cloning a full-resolution
+        // image after every pointer movement. The draft stays isolated.
+        patchState(store, { ballMaskRevision: store.ballMaskRevision() + 1 });
       },
 
       setBallSelection(x: number, y: number, radius?: number): void {
@@ -183,6 +267,9 @@ export const EditorStore = signalStore(
           uploadedImage: null,
           playerMask: null,
           ballMask: null,
+          refiningBallMask: false,
+          ballMaskDraft: null,
+          ballMaskRevision: 0,
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
@@ -206,6 +293,9 @@ export const EditorStore = signalStore(
           detectionError: null,
           playerMask: null,
           ballMask: null,
+          refiningBallMask: false,
+          ballMaskDraft: null,
+          ballMaskRevision: 0,
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
@@ -252,6 +342,9 @@ export const EditorStore = signalStore(
         patchState(store, {
           playerMask: null,
           ballMask: null,
+          refiningBallMask: false,
+          ballMaskDraft: null,
+          ballMaskRevision: 0,
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
@@ -277,6 +370,9 @@ export const EditorStore = signalStore(
         patchState(store, {
           playerMask: mask,
           ballMask: null,
+          refiningBallMask: false,
+          ballMaskDraft: null,
+          ballMaskRevision: 0,
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,

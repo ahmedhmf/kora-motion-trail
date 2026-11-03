@@ -63,3 +63,90 @@ export function combineSubjectMasks(
   ctx.putImageData(result, 0, 0);
   return canvas;
 }
+
+export type BallBrushMode = 'add' | 'erase';
+
+/** Use the same opaque, grayscale convention as the YOLO masks. Some manually
+ * selected ball masks have a transparent background; simply painting over
+ * these with destination-out would not erase the white RGB silhouette.
+ */
+export function cloneBallMask(source: HTMLCanvasElement): HTMLCanvasElement {
+  const output = document.createElement('canvas');
+  output.width = source.width;
+  output.height = source.height;
+  const sourceCtx = source.getContext('2d');
+  const ctx = output.getContext('2d');
+  if (!sourceCtx || !ctx) throw new Error('Could not copy ball mask.');
+  const pixels = sourceCtx.getImageData(0, 0, source.width, source.height);
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    const value = Math.round(pixels.data[i] * pixels.data[i + 3] / 255);
+    pixels.data[i] = value;
+    pixels.data[i + 1] = value;
+    pixels.data[i + 2] = value;
+    pixels.data[i + 3] = 255;
+  }
+  ctx.putImageData(pixels, 0, 0);
+  return output;
+}
+
+/** Paint continuously on the draft only. Caller owns the draft and sends
+ * source-image coordinates; this never touches the committed mask.
+ */
+export function paintBallMaskStroke(
+  draft: HTMLCanvasElement,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  diameter: number,
+  mode: BallBrushMode,
+): void {
+  const ctx = draft.getContext('2d');
+  if (!ctx || !Number.isFinite(diameter) || diameter <= 0 ||
+      ![from.x, from.y, to.x, to.y].every(Number.isFinite)) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = mode === 'add' ? '#ffffff' : '#000000';
+  ctx.fillStyle = mode === 'add' ? '#ffffff' : '#000000';
+  ctx.lineWidth = Math.max(1, diameter);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
+  ctx.stroke();
+  // Ensure a simple tap also paints on Canvas implementations which don't
+  // rasterize a zero-length stroke.
+  ctx.beginPath();
+  ctx.arc(to.x, to.y, Math.max(0.5, diameter / 2), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Composite the edited ball while keeping the player and ball mutually
+ * exclusive and preserving the canonical player segmentation.
+ */
+export function rebuildMasksFromBall(
+  playerSource: HTMLCanvasElement,
+  editedBall: HTMLCanvasElement,
+): { player: HTMLCanvasElement; ball: HTMLCanvasElement; combined: HTMLCanvasElement } {
+  if (playerSource.width !== editedBall.width || playerSource.height !== editedBall.height) {
+    throw new Error('Player and ball masks must have matching dimensions.');
+  }
+  const player = document.createElement('canvas');
+  player.width = playerSource.width;
+  player.height = playerSource.height;
+  const ctx = player.getContext('2d');
+  const sourceCtx = playerSource.getContext('2d');
+  const ballCtx = editedBall.getContext('2d');
+  if (!ctx || !sourceCtx || !ballCtx) throw new Error('Could not rebuild subject masks.');
+  const pixels = sourceCtx.getImageData(0, 0, player.width, player.height);
+  const ball = ballCtx.getImageData(0, 0, player.width, player.height).data;
+  for (let i = 0; i < ball.length; i += 4) {
+    const value = Math.max(0, pixels.data[i] - ball[i]);
+    pixels.data[i] = value;
+    pixels.data[i + 1] = value;
+    pixels.data[i + 2] = value;
+    pixels.data[i + 3] = 255;
+  }
+  ctx.putImageData(pixels, 0, 0);
+  return { player, ball: editedBall, combined: combineSubjectMasks(player, editedBall) };
+}
