@@ -63,6 +63,7 @@ export class VideoLab implements OnDestroy {
     this.activeSubject() === 'player' ? this.playerSettings() : this.ballSettings());
   readonly playing = signal(false);
   readonly showTrackingOverlay = signal(true);
+  readonly useOpticalFlow = signal(true);
 
   private video: HTMLVideoElement | null = null;
   private sourceUrl: string | null = null;
@@ -317,8 +318,23 @@ export class VideoLab implements OnDestroy {
   }
 
   private rebuildCorrectedFrames(): void {
-    this.frames.set(applyVideoCorrections(this.sourceFrames(), this.corrections()));
+    try {
+      this.frames.set(applyVideoCorrections(
+        this.sourceFrames(), this.corrections(), this.useOpticalFlow(),
+      ));
+      this.error.set(null);
+    } catch (error) {
+      // Keep the previous committed correction preview if flow computation
+      // fails; allow turning it off rather than losing the clip.
+      this.error.set(error instanceof Error ? error.message : 'Mask propagation failed.');
+    }
     this.drawCurrent();
+  }
+
+  toggleOpticalFlow(): void {
+    if (this.paintingMask() || this.exporting() || this.busy()) return;
+    this.useOpticalFlow.update((enabled) => !enabled);
+    this.rebuildCorrectedFrames();
   }
 
   private canvasPoint(event: PointerEvent): TrackCenter | null {

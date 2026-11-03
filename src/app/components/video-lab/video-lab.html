@@ -266,6 +266,17 @@
             (click)="applyMaskPainting()">Apply mask</button>
         </div>
       }
+      <label class="flex items-center gap-2 text-xs text-zinc-200">
+        <input type="checkbox" class="accent-cyan-400"
+          [disabled]="paintingMask() || exporting() || busy()"
+          [checked]="useOpticalFlow()" (change)="toggleOpticalFlow()" />
+        Optical flow-assisted propagation (beta)
+      </label>
+      <p class="text-xs text-zinc-500">
+        Tracks locally moving image patches across up to two neighboring sampled frames.
+        Uncertain patches fall back to tracked-position translation. Turn off to compare
+        with the earlier translation-only method.
+      </p>
       <p class="text-xs text-zinc-500">
         Applied edits become a correction keyframe, influencing up to two nearby sampled frames.
         Both preview and WebM export use the committed masks.
