@@ -26,8 +26,19 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
   private subject: MotionSubject = 'player';
   private anchor = { x: 0, y: 0 };
   private dragging: 'end' | 'curve' | null = null;
-  @Input() selectingBall = false;
-  @Input() editingMotion = false;
+  private selectionMode = false;
+  private pathEditMode = false;
+  @Input() set selectingBall(value: boolean) {
+    this.selectionMode = value;
+    if (this.viewReady) this.drawImage();
+  }
+  get selectingBall(): boolean { return this.selectionMode; }
+  @Input() set editingMotion(value: boolean) {
+    this.pathEditMode = value;
+    if (!value) this.dragging = null;
+    if (this.viewReady) this.drawImage();
+  }
+  get editingMotion(): boolean { return this.pathEditMode; }
   @Input() set motionSettings(value: MotionSettings | null) {
     this.currentMotion = value;
     if (this.viewReady) this.drawImage();
