@@ -16,6 +16,8 @@ describe('custom motion presets persistence', () => {
     delete legacy.directionAngle;
     delete legacy.trailFadeCurve;
     delete legacy.echoScale;
+    delete legacy.pathCurve;
+    delete legacy.echoRotation;
     legacy.direction = 'up';
     const restored = parseCustomPresets(JSON.stringify([{ ...preset, settings: legacy }]));
     expect(restored).toHaveLength(1);
@@ -24,12 +26,30 @@ describe('custom motion presets persistence', () => {
     expect(restored[0].settings.trailDistance).toBe(100);
     expect(restored[0].settings.trailFadeCurve).toBe('classic');
     expect(restored[0].settings.echoScale).toBe(100);
+    expect(restored[0].settings.pathCurve).toBe(0);
+    expect(restored[0].settings.echoRotation).toBe(0);
     expect(restored[0].settings.glowEnabled).toBe(true);
   });
 
   it('rejects out-of-range advanced values', () => {
     const invalid = { ...preset, settings: { ...preset.settings, directionAngle: 999 } };
     expect(parseCustomPresets(JSON.stringify([invalid]))).toEqual([]);
+  });
+
+  it('saves and restores nonzero curvature and rotation values', () => {
+    const changed = {
+      ...preset, settings: { ...preset.settings, pathCurve: -75, echoRotation: 30 },
+    };
+    expect(parseCustomPresets(JSON.stringify([changed]))).toEqual([changed]);
+  });
+
+  it('rejects out-of-range curved path and echo rotation values', () => {
+    expect(parseCustomPresets(JSON.stringify([
+      { ...preset, settings: { ...preset.settings, pathCurve: -101 } },
+    ]))).toEqual([]);
+    expect(parseCustomPresets(JSON.stringify([
+      { ...preset, settings: { ...preset.settings, echoRotation: 46 } },
+    ]))).toEqual([]);
   });
 
   it('restores valid settings snapshots', () => {
