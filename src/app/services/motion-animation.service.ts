@@ -98,10 +98,15 @@ export class MotionAnimationService {
     motionSettings: MotionSettings,
     videoSettings: VideoExportSettings,
     progress: number,
+    ballMask?: HTMLCanvasElement | null,
+    ballMotionSettings?: MotionSettings,
   ): HTMLCanvasElement {
     const frameSettings = getAnimationMotionSettings(
       motionSettings, videoSettings, progress,
     );
-    return this.motionTrailsService.render(image, mask, frameSettings);
+    const ballFrame = ballMotionSettings
+      ? getAnimationMotionSettings(ballMotionSettings, videoSettings, progress)
+      : undefined;
+    return this.motionTrailsService.render(image, mask, frameSettings, ballMask, ballFrame);
   }
 }
