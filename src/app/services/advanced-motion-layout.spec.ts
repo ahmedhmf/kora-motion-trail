@@ -63,6 +63,49 @@ describe('advanced motion layout', () => {
     expect(result.width).toBe(1500);
   });
 
+  it('defaults to an unbent path and zero rotation', () => {
+    for (const index of [1, 5, 10]) {
+      const result = echo({}, index);
+      expect(result.y).toBeCloseTo(0);
+      expect(result.rotationRadians).toBe(0);
+      expect(result.pivotX - 500).toBeCloseTo(result.x);
+    }
+  });
+
+  it('curves intermediate echoes in opposite directions without changing the endpoint', () => {
+    const straight = echo({ pathCurve: 0 }, 5);
+    const left = echo({ pathCurve: 100 }, 5);
+    const right = echo({ pathCurve: -100 }, 5);
+    expect(left.y).toBeLessThan(straight.y);
+    expect(right.y).toBeGreaterThan(straight.y);
+    expect(left.x).toBeCloseTo(straight.x);
+    expect(right.x).toBeCloseTo(straight.x);
+    expect(echo({ pathCurve: 100 }, 10).y).toBeCloseTo(0);
+    expect(echo({ pathCurve: -100 }, 10).y).toBeCloseTo(0);
+  });
+
+  it('rotates echoes progressively and respects an off-centre subject anchor', () => {
+    const settings = {
+      ...base, intensity: 0, echoScale: 150, echoRotation: 40, pathCurve: 0,
+    };
+    const near = getEchoLayout(5, 10, 1000, 600, settings, 200, 400);
+    const far = getEchoLayout(10, 10, 1000, 600, settings, 200, 400);
+    expect(near.rotationRadians).toBeCloseTo(20 * Math.PI / 180);
+    expect(far.rotationRadians).toBeCloseTo(40 * Math.PI / 180);
+    expect(far.pivotX).toBe(200);
+    expect(far.pivotY).toBe(400);
+    expect(far.x).toBeCloseTo(-100);
+    expect(far.y).toBeCloseTo(-200);
+  });
+
+  it('keeps fading and spacing independent from curvature and rotation', () => {
+    const original = echo({}, 5);
+    const changed = echo({ pathCurve: 80, echoRotation: -30 }, 5);
+    expect(changed.fade).toBe(original.fade);
+    expect(changed.secondaryFade).toBe(original.secondaryFade);
+    expect(changed.scale).toBe(original.scale);
+  });
+
   it('provides distinct fade curves', () => {
     expect(getTrailFade(0.5, 'classic')).toBeCloseTo(0.825);
     expect(getTrailFade(0.5, 'linear')).toBeCloseTo(0.575);
