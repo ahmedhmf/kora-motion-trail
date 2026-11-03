@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 
 import { MotionSettings } from '../models/motion-settings.model';
 import { EchoLayout, getEchoLayout, getGradientWeights } from './advanced-motion-layout';
+import type { TrackCenter } from './subject-tracking';
 
 @Injectable({
   providedIn: 'root',
@@ -9,7 +10,7 @@ import { EchoLayout, getEchoLayout, getGradientWeights } from './advanced-motion
 export class MotionTrailsService {
   // Cache only the current image/mask pair to avoid retaining old large canvases.
   private cachedSubjects: Array<{
-    image: HTMLImageElement | HTMLCanvasElement | HTMLCanvasElement;
+    image: HTMLImageElement | HTMLCanvasElement;
     mask: HTMLCanvasElement;
     canvas: HTMLCanvasElement;
     anchor: { x: number; y: number };
@@ -161,6 +162,7 @@ export class MotionTrailsService {
     settings: MotionSettings,
     ballMask?: HTMLCanvasElement | null,
     ballSettings?: MotionSettings,
+    trackingAnchors?: { player: TrackCenter | null; ball: TrackCenter | null },
   ): HTMLCanvasElement {
     const width = this.imageSize(image).width, height = this.imageSize(image).height;
     const output = document.createElement('canvas');
@@ -171,9 +173,9 @@ export class MotionTrailsService {
 
     // Both subject trails stay behind the sharp, original player and ball.
     ctx.drawImage(image, 0, 0, width, height);
-    const playerSubject = this.drawLayer(ctx, image, mask, settings);
+    const playerSubject = this.drawLayer(ctx, image, mask, settings, trackingAnchors?.player);
     const ballSubject = ballMask && ballSettings
-      ? this.drawLayer(ctx, image, ballMask, ballSettings) : null;
+      ? this.drawLayer(ctx, image, ballMask, ballSettings, trackingAnchors?.ball) : null;
     ctx.drawImage(playerSubject, 0, 0, width, height);
     if (ballSubject) ctx.drawImage(ballSubject, 0, 0, width, height);
     return output;
@@ -184,6 +186,7 @@ export class MotionTrailsService {
     image: HTMLImageElement | HTMLCanvasElement,
     mask: HTMLCanvasElement,
     settings: MotionSettings,
+    trackedAnchor?: TrackCenter | null,
   ): HTMLCanvasElement {
     const width = this.imageSize(image).width;
     const height = this.imageSize(image).height;
@@ -197,8 +200,8 @@ export class MotionTrailsService {
     const glowBlur = Math.max(0, Math.min(100, settings.glowBlur));
     const blurAmount = Math.max(0, Math.min(30, settings.directionalBlur));
     const glowIntensity = Math.max(0, Math.min(1, settings.glowIntensity / 100));
-    const anchorX = this.subjectAnchor?.x ?? width / 2;
-    const anchorY = this.subjectAnchor?.y ?? height / 2;
+    const anchorX = trackedAnchor?.x ?? this.subjectAnchor?.x ?? width / 2;
+    const anchorY = trackedAnchor?.y ?? this.subjectAnchor?.y ?? height / 2;
 
     // Cached per active color. The two gradient endpoints are composited with
     // weights based on echo distance, avoiding per-frame pixel processing.
@@ -246,7 +249,7 @@ export class MotionTrailsService {
     for (let i = layers; i >= 1; i--) {
       const echo = getEchoLayout(
         i, layers, width, height, settings,
-        this.subjectAnchor?.x, this.subjectAnchor?.y,
+        anchorX, anchorY,
       );
 
       // Strong echoes, including distant copies.
@@ -267,7 +270,7 @@ export class MotionTrailsService {
     for (let i = layers; i >= 1; i--) {
       const echo = getEchoLayout(
         i, layers, width, height, settings,
-        this.subjectAnchor?.x, this.subjectAnchor?.y,
+        anchorX, anchorY,
       );
 
       // Gentle fading keeps distant echoes recognizable.

@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { YoloSegmentationService } from './yolo-segmentation.service';
 import { MotionTrailsService } from './motion-trails.service';
 import { MotionSettings } from '../models/motion-settings.model';
+import { FrameTracks, trackMasks } from './subject-tracking';
 
 export const CLIP_MAX_SECONDS = 5;
 export const CLIP_FPS = 6;
@@ -13,6 +14,7 @@ export interface SegmentedClipFrame {
   ball: HTMLCanvasElement | null;
   combined: HTMLCanvasElement;
   timeSeconds: number;
+  tracking?: FrameTracks;
 }
 
 export function getClipSampleTimes(duration: number, fps = CLIP_FPS): number[] {
@@ -74,6 +76,12 @@ export class VideoClipFramesService {
       // Let the browser update the UI between inference calls.
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
+    // Associate observations across all frames after sampling, keeping
+    // source masks untouched for source/mask inspection and future keyframes.
+    const tracking = trackMasks(result);
+    for (let i = 0; i < result.length; i++) {
+      result[i].tracking = tracking[i];
+    }
     return result;
   }
 
@@ -84,6 +92,14 @@ export class VideoClipFramesService {
   ): HTMLCanvasElement {
     return this.trails.render(
       frame.source, frame.player, playerSettings, frame.ball, ballSettings,
+      frame.tracking
+        ? {
+          player: frame.tracking.player.status === 'detected'
+            ? frame.tracking.player.center : null,
+          ball: frame.tracking.ball.status === 'detected'
+            ? frame.tracking.ball.center : null,
+        }
+        : undefined,
     );
   }
 
