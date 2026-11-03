@@ -4,6 +4,8 @@ export type MotionDirection =
   | 'up'
   | 'down';
 
+export type TrailColorMode = 'original' | 'solid';
+
 export interface MotionSettings {
   intensity: number;
   preservation: number;
@@ -12,6 +14,11 @@ export interface MotionSettings {
   visibility: number;
 
   trailStrength: number; // 0–100
+  trailColorMode: TrailColorMode;
+  trailColor: string;
+  glowEnabled: boolean;
+  glowIntensity: number;
+  glowBlur: number;
 }
 
 export const DEFAULT_MOTION_SETTINGS: MotionSettings = {
@@ -22,4 +29,9 @@ export const DEFAULT_MOTION_SETTINGS: MotionSettings = {
 
   visibility: 100,
   trailStrength: 85,
+  trailColorMode: 'original',
+  trailColor: '#00e5ff',
+  glowEnabled: false,
+  glowIntensity: 65,
+  glowBlur: 18,
 };
