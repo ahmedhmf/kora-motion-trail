@@ -89,6 +89,12 @@
       <canvas #previewCanvas
         class="mx-auto block h-auto max-h-[70vh] w-auto max-w-full rounded-lg bg-black"
         [class.hidden]="!frames().length"
+        [class.cursor-crosshair]="correcting()"
+        [style.touch-action]="correcting() ? 'none' : 'auto'"
+        (pointerdown)="onCorrectionPointerDown($event)"
+        (pointermove)="onCorrectionPointerMove($event)"
+        (pointerup)="onCorrectionPointerUp($event)"
+        (pointercancel)="onCorrectionPointerUp($event)"
         aria-label="Processed video frame preview"></canvas>
 
       @if (frames().length) {
@@ -104,7 +110,40 @@
           <input type="range" class="w-full accent-cyan-400" min="0"
             [max]="frames().length - 1" step="1" [value]="frameIndex()"
             (input)="seek($event)" aria-label="Seek sampled frames" />
-          <p class="text-xs text-zinc-500">Each frame is segmented separately and player/ball centres are matched and smoothed across samples. No multi-player identities, audio or high-frame-rate processing yet.</p>
+          <div class="space-y-2 rounded-lg border border-zinc-700 bg-zinc-950/70 p-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold">Correction Timeline</h3>
+              <div class="flex items-center gap-2">
+                <button type="button" class="rounded border border-zinc-700 px-3 py-1 text-xs"
+                  [disabled]="frameIndex() === 0" (click)="stepFrame(-1)" aria-label="Previous frame">Previous</button>
+                <span class="text-xs tabular-nums text-zinc-400">{{ frames()[frameIndex()].timeSeconds.toFixed(2) }}s</span>
+                <button type="button" class="rounded border border-zinc-700 px-3 py-1 text-xs"
+                  [disabled]="frameIndex() >= frames().length - 1" (click)="stepFrame(1)" aria-label="Next frame">Next</button>
+              </div>
+            </div>
+            <div class="grid gap-1" [style.grid-template-columns]="'repeat(' + frames().length + ', minmax(16px, 1fr))'">
+              @for (frame of frames(); track $index; let i = $index) {
+                <button type="button"
+                  [attr.aria-label]="'Go to frame ' + (i + 1)"
+                  [attr.aria-current]="frameIndex() === i ? 'step' : null"
+                  [title]="'Frame ' + (i + 1) + ' at ' + frame.timeSeconds.toFixed(2) + 's'"
+                  (click)="selectFrame(i)"
+                  class="relative h-11 min-w-0 rounded border transition-colors"
+                  [class]="frameIndex() === i
+                    ? 'border-white bg-cyan-500/30'
+                    : 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700'">
+                  @if (keyframeAt(i, 'player')) {
+                    <span class="absolute left-0.5 top-1 h-2 w-2 rounded-full bg-cyan-400"></span>
+                  }
+                  @if (keyframeAt(i, 'ball')) {
+                    <span class="absolute bottom-1 right-0.5 h-2 w-2 rounded-full bg-yellow-400"></span>
+                  }
+                </button>
+              }
+            </div>
+            <p class="text-xs text-zinc-400">Each block is a sampled frame. Cyan dot = Player correction; yellow dot = Ball correction. Corrections affect at most two neighboring frames.</p>
+          </div>
+                    <p class="text-xs text-zinc-500">Each frame is segmented separately and player/ball centres are matched and smoothed across samples. No multi-player identities, audio or high-frame-rate processing yet.</p>
         </div>
       }
     </div>
@@ -137,6 +176,50 @@
           (click)="selectSubject('ball')">Ball</button>
       </div>
       <p class="text-xs text-zinc-400">Only the selected subject's settings change. Both remain visible together in the artwork.</p>
+    </div>
+
+    <div class="space-y-3 border-t border-zinc-700 pt-4">
+      <h3 class="font-semibold">Correction keyframes</h3>
+      <p class="text-xs text-zinc-400">
+        Choose Player or Ball, move the timeline to a frame and enable corrections.
+        Click or drag on the video to reposition the selected subject. This creates a keyframe.
+      </p>
+      <button type="button" [disabled]="!frames().length || exporting()"
+        class="min-h-11 w-full rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+        [class]="correcting() ? 'border-amber-400 bg-amber-400/10 text-amber-100' : 'border-zinc-600 text-zinc-100'"
+        (click)="toggleCorrectionMode()">
+        {{ correcting() ? 'Finish correcting' : 'Correct subject position' }}
+      </button>
+      @if (correcting() && activeSubject() === 'ball') {
+        <div class="space-y-2">
+          <div class="flex justify-between gap-2 text-xs">
+            <label for="video-ball-radius">Missing ball radius</label>
+            <span>{{ ballCorrectionRadius() }}px</span>
+          </div>
+          <input id="video-ball-radius" type="range" min="2" max="50" step="1"
+            class="w-full accent-yellow-400" [value]="ballCorrectionRadius()"
+            (input)="updateBallCorrectionRadius($event)" />
+          <p class="text-xs text-zinc-400">Used when drawing a ball that YOLO missed entirely.</p>
+        </div>
+      }
+      @if (keyframeAt(frameIndex(), activeSubject())) {
+        <p class="text-xs text-emerald-300">
+          {{ activeSubject() === 'ball' ? 'Ball' : 'Player' }} correction saved on this frame.
+        </p>
+        <button type="button" (click)="removeCorrection()"
+          class="min-h-10 w-full rounded-lg border border-red-500/60 px-3 py-2 text-xs text-red-300">
+          Remove this keyframe
+        </button>
+      }
+      @if (corrections().length) {
+        <p class="text-xs text-zinc-400">{{ corrections().length }} correction keyframe(s) in the clip</p>
+        <button type="button" (click)="clearCorrections()"
+          class="text-xs text-zinc-300 underline">Clear all corrections</button>
+      }
+      <p class="text-xs text-zinc-500">
+        Corrections are local to the current clip. The original YOLO masks remain unchanged.
+        Preview and WebM export use the corrected frames; the tracking guide is preview-only.
+      </p>
     </div>
 
     <div class="space-y-4 border-t border-zinc-700 pt-4">
