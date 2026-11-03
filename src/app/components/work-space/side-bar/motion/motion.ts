@@ -51,6 +51,13 @@ export class Motion {
     this.editorStore.setBallMaskOverlayVisible((event.target as HTMLInputElement).checked);
   }
 
+  updateDetectedBallScale(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (!Number.isFinite(value)) return;
+    this.stopAnimation.emit();
+    this.editorStore.setBallMaskScale(value);
+  }
+
   updateBallRadius(event: Event): void {
     const radius = Number((event.target as HTMLInputElement).value);
     if (!Number.isFinite(radius)) return;
