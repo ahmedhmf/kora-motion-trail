@@ -5,6 +5,7 @@ import { MotionAnimationService } from './motion-animation.service';
 import { MotionSettings } from '../models/motion-settings.model';
 
 import { VideoExportSettings } from '../models/video-export-settings.model';
+import { drawExportFrame, getExportDimensions } from './export-layout';
 
 @Injectable({
   providedIn: 'root',
@@ -31,7 +32,12 @@ export class VideoExportService {
       );
     }
 
-    const { width, height } = this.getDimensions(image, videoSettings.resolution);
+    const { width, height } = getExportDimensions(
+      image.naturalWidth,
+      image.naturalHeight,
+      videoSettings.resolution,
+      videoSettings.aspectRatio,
+    );
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -99,7 +105,7 @@ export class VideoExportService {
       0,
     );
 
-    ctx.drawImage(firstFrame, 0, 0, width, height);
+    drawExportFrame(ctx, firstFrame, firstFrame.width, firstFrame.height, width, height, videoSettings.fit);
 
     recorder.start();
 
@@ -127,8 +133,7 @@ export class VideoExportService {
           progress,
         );
 
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(frame, 0, 0, width, height);
+        drawExportFrame(ctx, frame, frame.width, frame.height, width, height, videoSettings.fit);
 
         videoTrack.requestFrame();
 
@@ -149,7 +154,7 @@ export class VideoExportService {
 
     stream.getTracks().forEach((track) => track.stop());
 
-    this.downloadVideo(blob, videoSettings.format);
+    this.downloadVideo(blob, videoSettings.format, videoSettings.aspectRatio);
   }
 
   private getMimeType(format: VideoExportSettings['format']): string | null {
@@ -161,31 +166,17 @@ export class VideoExportService {
     return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? null;
   }
 
-  private getDimensions(
-    image: HTMLImageElement,
-    resolution: VideoExportSettings['resolution'],
-  ): { width: number; height: number } {
-    const maxDimension = resolution === '4k' ? 3840 : resolution === '1080p' ? 1920 : 1280;
-
-    const sourceWidth = image.naturalWidth;
-    const sourceHeight = image.naturalHeight;
-
-    const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
-
-    // Even dimensions improve video encoder compatibility.
-    return {
-      width: Math.max(2, Math.round((sourceWidth * scale) / 2) * 2),
-      height: Math.max(2, Math.round((sourceHeight * scale) / 2) * 2),
-    };
-  }
-
-  private downloadVideo(blob: Blob, format: VideoExportSettings['format']): void {
+  private downloadVideo(
+    blob: Blob,
+    format: VideoExportSettings['format'],
+    ratio: VideoExportSettings['aspectRatio'],
+  ): void {
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = `football-motion-trails.${format}`;
+    link.download = `football-motion-trails-${ratio.replace(':', 'x')}.${format}`;
 
     document.body.appendChild(link);
     link.click();
