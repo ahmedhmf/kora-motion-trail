@@ -1,7 +1,7 @@
 import { Component, inject, output } from '@angular/core';
 import { CollapsibleSection } from '../../../../ui-components/collapsible-section/collapsible-section';
 import { EditorStore } from '../../../../stores/editor.store';
-import { TrailColorMode } from '../../../../models/motion-settings.model';
+import { MotionSettings } from '../../../../models/motion-settings.model';
 
 @Component({
   imports: [CollapsibleSection],
@@ -36,7 +36,7 @@ export class Motion {
   updateTrailColorMode(event: Event): void {
     const mode = (event.target as HTMLSelectElement).value;
     if (mode !== 'original' && mode !== 'solid') return;
-    this.updateEffect({ trailColorMode: mode as TrailColorMode });
+    this.updateEffect({ trailColorMode: mode });
   }
 
   updateTrailColor(event: Event): void {
@@ -62,7 +62,7 @@ export class Motion {
     this.editorStore.resetMotionSettings();
   }
 
-  private updateEffect(changes: Parameters<typeof this.editorStore.updateMotionSettings>[0]): void {
+  private updateEffect(changes: Partial<MotionSettings>): void {
     this.stopAnimation.emit();
     this.editorStore.updateMotionSettings(changes);
   }
