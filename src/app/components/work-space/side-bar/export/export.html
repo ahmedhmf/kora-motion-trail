@@ -1,4 +1,44 @@
  <app-collapsible-section section="export" title="Export" icon="🔗">
+          <div class="mb-4 space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            <h3 class="text-sm font-semibold text-white">Social Media Size</h3>
+
+            <label for="export-aspect" class="block text-sm text-zinc-300">Output Format</label>
+            <select
+              id="export-aspect"
+              class="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-white"
+              [value]="videoSettings().aspectRatio"
+              (change)="updateExportAspectRatio($event)"
+              [disabled]="isExporting()"
+            >
+              <option value="original">Original aspect ratio</option>
+              <option value="9:16">Reels / TikTok / Shorts (9:16)</option>
+              <option value="4:5">Instagram feed portrait (4:5)</option>
+              <option value="1:1">Instagram square (1:1)</option>
+              <option value="16:9">YouTube landscape (16:9)</option>
+            </select>
+
+            <label for="export-fit" class="block text-sm text-zinc-300">Image Fit</label>
+            <select
+              id="export-fit"
+              class="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-white"
+              [value]="videoSettings().fit"
+              (change)="updateExportFit($event)"
+              [disabled]="isExporting()"
+            >
+              <option value="contain">Fit entire image (black borders)</option>
+              <option value="cover">Fill frame (center crop)</option>
+            </select>
+
+            <p class="text-xs text-zinc-400">
+              Output: {{ exportDimensionsLabel() }} · Applies to PNG and video.
+            </p>
+            @if (videoSettings().fit === 'cover') {
+              <p class="text-xs text-amber-300">
+                Center cropping may cut off the player or motion trails.
+              </p>
+            }
+          </div>
+
           <button
             type="button"
             class="min-h-12 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
@@ -7,8 +47,12 @@
           >
             Export Artwork (PNG)
           </button>
+          @if (artworkError()) {
+            <p role="alert" class="mt-2 text-sm text-red-400">{{ artworkError() }}</p>
+          }
           <div class="mt-5 space-y-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
             <h3 class="text-base font-semibold text-white">Export Video</h3>
+            <p class="text-xs text-zinc-400">Resolution controls output quality for PNG and video.</p>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
