@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_MOTION_SETTINGS } from '../models/motion-settings.model';
-import { getEchoLayout, getTrailFade } from './advanced-motion-layout';
+import { getEchoLayout, getTrailFade, getGradientWeights } from './advanced-motion-layout';
 
 const base = { ...DEFAULT_MOTION_SETTINGS };
 const echo = (changes: Partial<typeof base> = {}, index = 5) =>
@@ -104,6 +104,20 @@ describe('advanced motion layout', () => {
     expect(changed.fade).toBe(original.fade);
     expect(changed.secondaryFade).toBe(original.secondaryFade);
     expect(changed.scale).toBe(original.scale);
+  });
+
+  it('blends near-to-far trail colors deterministically', () => {
+    expect(getGradientWeights(0)).toEqual({ near: 1, far: 0 });
+    expect(getGradientWeights(0.5)).toEqual({ near: 0.5, far: 0.5 });
+    expect(getGradientWeights(1)).toEqual({ near: 0, far: 1 });
+    expect(getGradientWeights(-4)).toEqual({ near: 1, far: 0 });
+    expect(getGradientWeights(2)).toEqual({ near: 0, far: 1 });
+  });
+
+  it('keeps new color and blur defaults backward compatible', () => {
+    expect(base.trailColorMode).toBe('original');
+    expect(base.directionalBlur).toBe(0);
+    expect(base.trailEndColor).toMatch(/^#[a-f0-9]{6}$/i);
   });
 
   it('provides distinct fade curves', () => {
