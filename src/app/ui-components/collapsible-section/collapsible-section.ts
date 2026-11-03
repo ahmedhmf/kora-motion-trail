@@ -1,5 +1,6 @@
 import { Component, inject, input } from '@angular/core';
 import { CollapsibleSectionStore } from './collapsible-section.store';
+import type { ToolSection } from '../../models/tool-section.type';
 
 @Component({
   imports: [],

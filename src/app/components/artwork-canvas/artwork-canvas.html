@@ -5,6 +5,13 @@
   <canvas
   #canvas
   class="block h-auto max-h-[70vh] max-w-full object-contain"
+  [class.cursor-crosshair]="selectingBall"
+  [class.cursor-grab]="editingMotion && !selectingBall"
+  [style.touch-action]="selectingBall || editingMotion ? 'none' : 'auto'"
+  (pointerdown)="onPointerDown($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointercancel)="onPointerUp($event)"
 ></canvas>
 
   @if (showPlayerControls) {

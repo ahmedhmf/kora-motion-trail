@@ -1,5 +1,8 @@
 import { Component, AfterViewInit, OnDestroy, ViewChild, ElementRef, Input, EventEmitter, Output } from '@angular/core';
 import { UploadedImage } from '../../models/uploaded-image.model';
+import { MotionSettings } from '../../models/motion-settings.model';
+import { BallSelection, MotionSubject } from '../../models/subject-selection.model';
+import { getEchoLayout } from '../../services/advanced-motion-layout';
 
 @Component({
   imports: [],
@@ -18,6 +21,39 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
   private maskVisible = false;
   private currentProcessedImage: HTMLCanvasElement | null = null;
   private currentAnimationFrame: HTMLCanvasElement | null = null;
+  private currentMotion: MotionSettings | null = null;
+  private ball: BallSelection | null = null;
+  private subject: MotionSubject = 'player';
+  private anchor = { x: 0, y: 0 };
+  private dragging: 'end' | 'curve' | null = null;
+  private lastDragValue = '';
+  private selectionMode = false;
+  private pathEditMode = false;
+  @Input() set selectingBall(value: boolean) {
+    this.selectionMode = value;
+    if (this.viewReady) this.drawImage();
+  }
+  get selectingBall(): boolean { return this.selectionMode; }
+  @Input() set editingMotion(value: boolean) {
+    this.pathEditMode = value;
+    if (!value) this.dragging = null;
+    if (this.viewReady) this.drawImage();
+  }
+  get editingMotion(): boolean { return this.pathEditMode; }
+  @Input() set motionSettings(value: MotionSettings | null) {
+    this.currentMotion = value;
+    if (this.viewReady) this.drawImage();
+  }
+  @Input() set ballSelection(value: BallSelection | null) {
+    this.ball = value;
+    if (this.viewReady) this.drawImage();
+  }
+  @Input() set selectedSubject(value: MotionSubject) {
+    this.subject = value;
+    if (this.viewReady) this.drawImage();
+  }
+  @Output() ballPicked = new EventEmitter<{ x: number; y: number }>();
+  @Output() motionPathChanged = new EventEmitter<Partial<MotionSettings>>();
 
   @Input()
   set image(value: UploadedImage | null) {
@@ -31,6 +67,20 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
   @Input()
   set mask(value: HTMLCanvasElement | null) {
     this.currentMask = value;
+    if (value) {
+      const data = value.getContext('2d')?.getImageData(0, 0, value.width, value.height);
+      if (data) {
+        let minX = value.width, minY = value.height, maxX = -1, maxY = -1;
+        for (let i = 0; i < data.data.length; i += 4) {
+          if (data.data[i] <= 10) continue;
+          const index = i / 4, x = index % value.width, y = Math.floor(index / value.width);
+          minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+          minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+        }
+        this.anchor = maxX >= 0 ? { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+          : { x: value.width / 2, y: value.height / 2 };
+      }
+    }
     if (this.viewReady) this.drawImage();
   }
 
@@ -91,6 +141,129 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
     }
   }
 
+  private point(event: PointerEvent): { x: number; y: number } {
+    const canvas = this.canvasRef.nativeElement;
+    const bounds = canvas.getBoundingClientRect();
+    const image = this.currentImage!;
+    return {
+      x: (event.clientX - bounds.left) * image.width / bounds.width,
+      y: (event.clientY - bounds.top) * image.height / bounds.height,
+    };
+  }
+
+  private motionAnchor(): { x: number; y: number } {
+    return this.subject === 'ball' && this.ball ? this.ball : this.anchor;
+  }
+
+  private guides() {
+    if (!this.currentImage || !this.currentMotion) return null;
+    const a = this.motionAnchor(), m = this.currentMotion;
+    const mid = getEchoLayout(m.layers / 2, m.layers,
+      this.currentImage.width, this.currentImage.height, m, a.x, a.y);
+    const end = getEchoLayout(m.layers, m.layers,
+      this.currentImage.width, this.currentImage.height, m, a.x, a.y);
+    return { start: a, mid, end };
+  }
+
+  onPointerDown(event: PointerEvent): void {
+    if (!this.currentImage) return;
+    const p = this.point(event);
+    if (this.selectingBall) {
+      this.ballPicked.emit(p);
+      return;
+    }
+    if (!this.editingMotion) return;
+    const guides = this.guides();
+    if (!guides) return;
+    const distance = (x: number, y: number) => Math.hypot(p.x - x, p.y - y);
+    const threshold = 26 * this.currentImage.width / this.canvasRef.nativeElement.width;
+    const endDistance = distance(guides.end.pivotX, guides.end.pivotY);
+    const midDistance = distance(guides.mid.pivotX, guides.mid.pivotY);
+    this.dragging = endDistance <= threshold && endDistance <= midDistance
+      ? 'end' : midDistance <= threshold ? 'curve' : null;
+    if (this.dragging) {
+      this.lastDragValue = '';
+      this.canvasRef.nativeElement.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }
+  }
+
+  onPointerMove(event: PointerEvent): void {
+    if (!this.dragging || !this.currentImage || !this.currentMotion) return;
+    const p = this.point(event);
+    const a = this.motionAnchor(), m = this.currentMotion;
+    const dx = p.x - a.x, dy = p.y - a.y;
+    if (this.dragging === 'end') {
+      const base = Math.min(this.currentImage.width, this.currentImage.height) *
+        0.45 * m.intensity / 100;
+      this.emitDrag({
+        directionAngle: Math.round((Math.atan2(-dy, dx) * 180 / Math.PI + 360) % 360),
+        trailDistance: Math.round(Math.max(0, Math.min(200,
+          base > 0 ? 100 * Math.hypot(dx, dy) / base : m.trailDistance))),
+      });
+    } else {
+      const baseline = getEchoLayout(m.layers / 2, m.layers,
+        this.currentImage.width, this.currentImage.height, { ...m, pathCurve: 0 }, a.x, a.y);
+      const angle = m.directionAngle * Math.PI / 180;
+      const sideways = (p.x - baseline.pivotX) * Math.sin(angle) +
+        (p.y - baseline.pivotY) * Math.cos(angle);
+      const power = m.trailSpacing === 'tight' ? 1.6
+        : m.trailSpacing === 'wide' ? 0.65 : 1;
+      const t = Math.pow(0.5, power);
+      const amplitude = Math.min(this.currentImage.width, this.currentImage.height) *
+        0.45 * m.intensity / 100 * m.trailDistance / 100 * 0.65 * 4 * t * (1 - t);
+      if (amplitude > 0) this.emitDrag({
+        pathCurve: Math.round(Math.max(-100, Math.min(100, sideways / amplitude * 100))),
+      });
+    }
+    event.preventDefault();
+  }
+
+  private emitDrag(changes: Partial<MotionSettings>): void {
+    const key = JSON.stringify(changes);
+    if (key === this.lastDragValue) return;
+    this.lastDragValue = key;
+    this.motionPathChanged.emit(changes);
+  }
+
+  onPointerUp(event: PointerEvent): void {
+    this.dragging = null;
+    this.lastDragValue = '';
+    const canvas = this.canvasRef.nativeElement;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+  }
+
+  private drawGuides(ctx: CanvasRenderingContext2D, width: number): void {
+    if (!this.currentImage) return;
+    const scale = width / this.currentImage.width;
+    if (this.selectingBall && this.ball) {
+      ctx.save(); ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2;
+      ctx.setLineDash([5, 3]); ctx.beginPath();
+      ctx.arc(this.ball.x * scale, this.ball.y * scale, this.ball.radius * scale, 0, Math.PI * 2);
+      ctx.stroke(); ctx.restore();
+    }
+    if (!this.editingMotion || this.selectingBall) return;
+    const g = this.guides();
+    if (!g) return;
+    ctx.save(); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2;
+    ctx.setLineDash([6, 5]); ctx.beginPath();
+    ctx.moveTo(g.start.x * scale, g.start.y * scale);
+    ctx.quadraticCurveTo(
+      (2 * g.mid.pivotX - (g.start.x + g.end.pivotX) / 2) * scale,
+      (2 * g.mid.pivotY - (g.start.y + g.end.pivotY) / 2) * scale,
+      g.end.pivotX * scale, g.end.pivotY * scale,
+    );
+    ctx.stroke(); ctx.setLineDash([]);
+    for (const [x, y, color] of [
+      [g.mid.pivotX, g.mid.pivotY, '#facc15'],
+      [g.end.pivotX, g.end.pivotY, '#22d3ee'],
+    ] as const) {
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x * scale, y * scale, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   ngAfterViewInit(): void {
     this.viewReady = true;
 
@@ -137,9 +310,6 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    const source =
-      this.maskVisible && this.currentMask ? this.currentMask : this.currentImage.image;
-
     if (this.currentAnimationFrame) {
       ctx.drawImage(this.currentAnimationFrame, 0, 0, width, height);
     } else if (this.maskVisible && this.currentMask) {
@@ -149,6 +319,7 @@ export class ArtworkCanvas implements AfterViewInit, OnDestroy {
     } else {
       ctx.drawImage(this.currentImage.image, 0, 0, width, height);
     }
+    this.drawGuides(ctx, width);
   }
 
   ngOnDestroy(): void {

@@ -198,12 +198,14 @@ export class Export {
     try {
       await this.videoExportService.exportVideo(
         uploaded.image,
-        mask,
+        this.editorStore.playerOnlyMask() ?? mask,
         this.editorStore.motionSettings(),
         this.videoSettings(),
         (progress) => {
           this.exportProgress.set(Math.round(progress * 100));
         },
+        this.editorStore.ballMask(),
+        this.editorStore.ballMotionSettings(),
       );
     } catch (error) {
       this.exportError.set(error instanceof Error ? error.message : 'Video export failed.');

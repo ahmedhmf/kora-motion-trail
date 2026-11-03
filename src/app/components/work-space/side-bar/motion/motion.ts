@@ -21,6 +21,24 @@ import {
 export class Motion {
   readonly editorStore = inject(EditorStore);
 
+  selectSubject(subject: 'player' | 'ball'): void {
+    this.stopAnimation.emit();
+    this.editorStore.setActiveSubject(subject);
+  }
+
+  updateBallRadius(event: Event): void {
+    const radius = Number((event.target as HTMLInputElement).value);
+    if (!Number.isFinite(radius)) return;
+    this.stopAnimation.emit();
+    this.editorStore.updateBallRadius(radius);
+  }
+
+  clearBall(): void {
+    this.stopAnimation.emit();
+    this.editorStore.clearBallSelection();
+  }
+
+
   readonly stopAnimation = output<void>();
   readonly presets = MOTION_PRESETS;
   readonly customPresets = inject(CustomMotionPresetsService);
@@ -31,7 +49,7 @@ export class Motion {
   @ViewChild('presetNameInput') private presetNameInput?: ElementRef<HTMLInputElement>;
 
   activeCustomPresetId(): string | null {
-    const current = this.editorStore.motionSettings();
+    const current = this.editorStore.currentMotionSettings();
     const keys = Object.keys(DEFAULT_MOTION_SETTINGS) as (keyof MotionSettings)[];
     return this.customPresets.presets().find((preset) =>
       keys.every((key) => preset.settings[key] === current[key]),
@@ -67,7 +85,7 @@ export class Motion {
   saveCustomPreset(event: Event): void {
     event.preventDefault();
     try {
-      this.customPresets.save(this.newPresetName(), this.editorStore.motionSettings());
+      this.customPresets.save(this.newPresetName(), this.editorStore.currentMotionSettings());
       this.closeSaveDialog();
     } catch (error) {
       this.presetError.set(error instanceof Error ? error.message : 'Could not save preset.');
@@ -80,7 +98,7 @@ export class Motion {
 
 
   activePreset(): MotionPresetId | null {
-    return findMatchingMotionPreset(this.editorStore.motionSettings());
+    return findMatchingMotionPreset(this.editorStore.currentMotionSettings());
   }
 
   applyPreset(id: MotionPresetId): void {
@@ -167,7 +185,7 @@ export class Motion {
     this.updateEffect({
       trailDistance: DEFAULT_MOTION_SETTINGS.trailDistance,
       trailSpacing: DEFAULT_MOTION_SETTINGS.trailSpacing,
-      directionAngle: DIRECTION_ANGLES[this.editorStore.motionSettings().direction],
+      directionAngle: DIRECTION_ANGLES[this.editorStore.currentMotionSettings().direction],
       trailFadeCurve: DEFAULT_MOTION_SETTINGS.trailFadeCurve,
       echoScale: DEFAULT_MOTION_SETTINGS.echoScale,
       pathCurve: DEFAULT_MOTION_SETTINGS.pathCurve,

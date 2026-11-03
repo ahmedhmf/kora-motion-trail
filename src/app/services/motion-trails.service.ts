@@ -8,16 +8,17 @@ import { EchoLayout, getEchoLayout, getGradientWeights } from './advanced-motion
 })
 export class MotionTrailsService {
   // Cache only the current image/mask pair to avoid retaining old large canvases.
-  private cachedSubject: {
+  private cachedSubjects: Array<{
     image: HTMLImageElement;
     mask: HTMLCanvasElement;
     canvas: HTMLCanvasElement;
-  } | null = null;
+    anchor: { x: number; y: number };
+  }> = [];
 
   private subjectAnchor: { x: number; y: number } | null = null;
 
-  // Keep at most two tint/blur variants for a gradient. Never accumulate
-  // canvases across images or when the user experiments with colors.
+  // Keep up to four variants: two gradient endpoints per subject (player and
+  // ball). Eviction stays bounded as colors are edited or images replaced.
   private coloredSubjects: Array<{
     source: HTMLCanvasElement;
     color: string;
@@ -38,7 +39,7 @@ export class MotionTrailsService {
   }> = [];
 
   invalidateSubjectCache(): void {
-    this.cachedSubject = null;
+    this.cachedSubjects = [];
     this.subjectAnchor = null;
     this.coloredSubjects = [];
     this.glowSubjects = [];
@@ -63,7 +64,7 @@ export class MotionTrailsService {
     ctx.globalCompositeOperation = 'source-over';
 
     this.coloredSubjects.push({ source: subject, color, canvas });
-    if (this.coloredSubjects.length > 2) this.coloredSubjects.shift();
+    if (this.coloredSubjects.length > 4) this.coloredSubjects.shift();
     return canvas;
   }
 
@@ -89,7 +90,7 @@ export class MotionTrailsService {
 
     const result = { source, blur, canvas, padding };
     this.glowSubjects.push(result);
-    if (this.glowSubjects.length > 2) this.glowSubjects.shift();
+    if (this.glowSubjects.length > 4) this.glowSubjects.shift();
     return result;
   }
 
@@ -123,25 +124,26 @@ export class MotionTrailsService {
     ctx.globalAlpha = 1;
     const result = { source, amount, angle, canvas, padding };
     this.streakSubjects.push(result);
-    if (this.streakSubjects.length > 2) this.streakSubjects.shift();
+    if (this.streakSubjects.length > 4) this.streakSubjects.shift();
     return result;
   }
 
   private getSubject(image: HTMLImageElement, mask: HTMLCanvasElement): HTMLCanvasElement {
-    const cached = this.cachedSubject;
-
-    if (
-      cached &&
-      cached.image === image &&
-      cached.mask === mask &&
-      cached.canvas.width === image.naturalWidth &&
-      cached.canvas.height === image.naturalHeight
-    ) {
+    const cached = this.cachedSubjects.find((entry) =>
+      entry.image === image && entry.mask === mask &&
+      entry.canvas.width === image.naturalWidth &&
+      entry.canvas.height === image.naturalHeight);
+    if (cached) {
+      this.subjectAnchor = cached.anchor;
       return cached.canvas;
     }
 
     const canvas = this.extractSubject(image, mask);
-    this.cachedSubject = { image, mask, canvas };
+    const anchor = this.subjectAnchor ?? {
+      x: image.naturalWidth / 2, y: image.naturalHeight / 2,
+    };
+    this.cachedSubjects.push({ image, mask, canvas, anchor });
+    if (this.cachedSubjects.length > 2) this.cachedSubjects.shift();
     return canvas;
   }
 
@@ -149,20 +151,34 @@ export class MotionTrailsService {
     image: HTMLImageElement,
     mask: HTMLCanvasElement,
     settings: MotionSettings,
+    ballMask?: HTMLCanvasElement | null,
+    ballSettings?: MotionSettings,
   ): HTMLCanvasElement {
-    const width = image.naturalWidth;
-    const height = image.naturalHeight;
-
+    const width = image.naturalWidth, height = image.naturalHeight;
     const output = document.createElement('canvas');
     output.width = width;
     output.height = height;
-
     const ctx = output.getContext('2d');
+    if (!ctx) throw new Error('Could not create artwork canvas.');
 
-    if (!ctx) {
-      throw new Error('Could not create artwork canvas.');
-    }
+    // Both subject trails stay behind the sharp, original player and ball.
+    ctx.drawImage(image, 0, 0, width, height);
+    const playerSubject = this.drawLayer(ctx, image, mask, settings);
+    const ballSubject = ballMask && ballSettings
+      ? this.drawLayer(ctx, image, ballMask, ballSettings) : null;
+    ctx.drawImage(playerSubject, 0, 0, width, height);
+    if (ballSubject) ctx.drawImage(ballSubject, 0, 0, width, height);
+    return output;
+  }
 
+  private drawLayer(
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    mask: HTMLCanvasElement,
+    settings: MotionSettings,
+  ): HTMLCanvasElement {
+    const width = image.naturalWidth;
+    const height = image.naturalHeight;
     const subject = this.getSubject(image, mask);
     const gradient = settings.trailColorMode === 'gradient';
     const primarySource = settings.trailColorMode === 'original'
@@ -202,9 +218,6 @@ export class MotionTrailsService {
         this.drawEcho(ctx, source, echo, alpha, 0, anchorX, anchorY);
       }
     };
-
-    // Original photograph as background.
-    ctx.drawImage(image, 0, 0, width, height);
 
     const intensity = Math.max(0, Math.min(1, settings.intensity / 100));
 
@@ -258,13 +271,7 @@ export class MotionTrailsService {
       drawTrail(echo, opacity, false);
     }
 
-    // -------------------------------------
-    // PASS 3: Sharp foreground
-    // -------------------------------------
-
-    ctx.drawImage(subject, 0, 0, width, height);
-
-    return output;
+    return subject;
   }
 
   private drawEcho(

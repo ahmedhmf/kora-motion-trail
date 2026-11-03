@@ -1,4 +1,33 @@
 <div class="space-y-3">
+<app-collapsible-section section="subjects" title="Subjects" icon="⚽">
+<div class="space-y-3">
+  <h3 class="text-sm font-semibold text-white">Edit Subject</h3>
+  <div class="grid grid-cols-2 gap-2">
+    <button type="button" class="rounded-lg border p-2 text-sm"
+      [class]="editorStore.activeSubject() === 'player' ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-zinc-700 text-zinc-300'"
+      (click)="selectSubject('player')">Player</button>
+    <button type="button" class="rounded-lg border p-2 text-sm disabled:opacity-40"
+      [class]="editorStore.activeSubject() === 'ball' ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-zinc-700 text-zinc-300'"
+      [disabled]="!editorStore.ballMask()"
+      (click)="selectSubject('ball')">Ball</button>
+  </div>
+  @if (editorStore.ballSelection(); as ball) {
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <label for="ball-radius" class="text-xs text-zinc-300">Ball selection radius</label>
+        <span class="text-xs text-cyan-400">{{ ball.radius }} px</span>
+      </div>
+      <input id="ball-radius" type="range" min="2"
+        [max]="editorStore.uploadedImage() ? editorStore.uploadedImage()!.width / 4 : 100"
+        [value]="ball.radius" (input)="updateBallRadius($event)"
+        class="w-full accent-cyan-400" />
+      <button type="button" class="text-xs text-zinc-300 underline" (click)="clearBall()">Remove ball separation</button>
+    </div>
+  } @else {
+    <p class="text-xs text-zinc-400">Use “Select Ball” above the canvas to separate it, then edit its trails independently.</p>
+  }
+</div>
+</app-collapsible-section>
 <app-collapsible-section section="presets" title="Presets" icon="🎨">
   <div class="mb-6 space-y-3 rounded-xl border border-zinc-700 bg-zinc-900/80 p-3">
     <div class="flex items-center justify-between gap-2">
@@ -65,7 +94,7 @@
   <div class="mb-3 flex items-center justify-between gap-2">
     <label for="intensity" class="text-sm"> Motion Intensity </label>
 
-    <span class="text-sm text-zinc-400"> {{ editorStore.motionSettings().intensity }}% </span>
+    <span class="text-sm text-zinc-400"> {{ editorStore.currentMotionSettings().intensity }}% </span>
   </div>
 
   <input
@@ -73,7 +102,7 @@
     type="range"
     min="0"
     max="100"
-    [value]="editorStore.motionSettings().intensity"
+    [value]="editorStore.currentMotionSettings().intensity"
     (input)="updateIntensity($event)"
     class="w-full accent-white"
   />
@@ -82,7 +111,7 @@
   <div class="mb-3 flex items-center justify-between gap-2">
     <label for="preservation" class="text-sm"> Subject Preservation </label>
 
-    <span class="text-sm text-zinc-400"> {{ editorStore.motionSettings().preservation }}% </span>
+    <span class="text-sm text-zinc-400"> {{ editorStore.currentMotionSettings().preservation }}% </span>
   </div>
 
   <input
@@ -90,7 +119,7 @@
     type="range"
     min="0"
     max="100"
-    [value]="editorStore.motionSettings().preservation"
+    [value]="editorStore.currentMotionSettings().preservation"
     (input)="updatePreservation($event)"
     class="w-full accent-white"
   />
@@ -100,7 +129,7 @@
     <label for="layers" class="text-sm"> Motion Layers </label>
 
     <span class="text-sm text-zinc-400">
-      {{ editorStore.motionSettings().layers }}
+      {{ editorStore.currentMotionSettings().layers }}
     </span>
   </div>
 
@@ -110,7 +139,7 @@
     min="2"
     max="20"
     step="1"
-    [value]="editorStore.motionSettings().layers"
+    [value]="editorStore.currentMotionSettings().layers"
     (input)="updateLayers($event)"
     class="w-full accent-white"
   />
@@ -120,7 +149,7 @@
       <label for="trail-strength" class="text-sm font-medium text-zinc-300"> Trail Strength </label>
 
       <span class="text-sm font-semibold text-cyan-400">
-        {{ editorStore.motionSettings().trailStrength }}%
+        {{ editorStore.currentMotionSettings().trailStrength }}%
       </span>
     </div>
 
@@ -131,7 +160,7 @@
       max="100"
       step="1"
       class="w-full cursor-pointer accent-cyan-400"
-      [value]="editorStore.motionSettings().trailStrength"
+      [value]="editorStore.currentMotionSettings().trailStrength"
       (input)="updateTrailStrength($event)"
     />
 
@@ -145,7 +174,7 @@
     <div class="flex items-center justify-between">
       <label class="text-sm font-medium text-zinc-300"> Trail Visibility </label>
 
-      <span class="text-sm text-cyan-400"> {{ editorStore.motionSettings().visibility }}% </span>
+      <span class="text-sm text-cyan-400"> {{ editorStore.currentMotionSettings().visibility }}% </span>
     </div>
 
     <input
@@ -154,7 +183,7 @@
       max="100"
       step="1"
       class="w-full accent-cyan-400"
-      [value]="editorStore.motionSettings().visibility"
+      [value]="editorStore.currentMotionSettings().visibility"
       (input)="updateTrailVisibility($event)"
     />
 
@@ -167,7 +196,7 @@
   <select
     id="direction"
     class="min-h-11 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm text-white"
-    [value]="editorStore.motionSettings().direction"
+    [value]="editorStore.currentMotionSettings().direction"
     (change)="updateDirection($event)"
   >
     <option value="left">Left</option>
@@ -193,11 +222,11 @@
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-2">
       <label for="trail-distance" class="text-sm text-zinc-300">Trail Distance</label>
-      <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().trailDistance }}%</span>
+      <span class="text-xs text-cyan-400">{{ editorStore.currentMotionSettings().trailDistance }}%</span>
     </div>
     <input id="trail-distance" type="range" min="0" max="200" step="5"
       class="w-full accent-cyan-400"
-      [value]="editorStore.motionSettings().trailDistance"
+      [value]="editorStore.currentMotionSettings().trailDistance"
       (input)="updateTrailDistance($event)" />
     <p class="text-xs text-zinc-500">Increase or decrease how far the echoes travel.</p>
   </div>
@@ -206,7 +235,7 @@
     <label for="trail-spacing" class="block text-sm text-zinc-300">Trail Spacing</label>
     <select id="trail-spacing"
       class="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-white"
-      [value]="editorStore.motionSettings().trailSpacing"
+      [value]="editorStore.currentMotionSettings().trailSpacing"
       (change)="updateTrailSpacing($event)">
       <option value="tight">Tight</option>
       <option value="normal">Normal</option>
@@ -217,11 +246,11 @@
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-2">
       <label for="direction-angle" class="text-sm text-zinc-300">Direction Angle</label>
-      <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().directionAngle }}°</span>
+      <span class="text-xs text-cyan-400">{{ editorStore.currentMotionSettings().directionAngle }}°</span>
     </div>
     <input id="direction-angle" type="range" min="0" max="360" step="5"
       class="w-full accent-cyan-400"
-      [value]="editorStore.motionSettings().directionAngle"
+      [value]="editorStore.currentMotionSettings().directionAngle"
       (input)="updateDirectionAngle($event)" />
     <p class="text-xs text-zinc-500">0° right · 90° up · 180° left · 270° down. Diagonal angles supported.</p>
   </div>
@@ -230,7 +259,7 @@
     <label for="trail-fade" class="block text-sm text-zinc-300">Trail Fade Curve</label>
     <select id="trail-fade"
       class="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-white"
-      [value]="editorStore.motionSettings().trailFadeCurve"
+      [value]="editorStore.currentMotionSettings().trailFadeCurve"
       (change)="updateTrailFadeCurve($event)">
       <option value="classic">Classic (original look)</option>
       <option value="linear">Linear</option>
@@ -243,11 +272,11 @@
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-2">
       <label for="echo-scale" class="text-sm text-zinc-300">Echo Scale</label>
-      <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().echoScale }}%</span>
+      <span class="text-xs text-cyan-400">{{ editorStore.currentMotionSettings().echoScale }}%</span>
     </div>
     <input id="echo-scale" type="range" min="50" max="150" step="5"
       class="w-full accent-cyan-400"
-      [value]="editorStore.motionSettings().echoScale"
+      [value]="editorStore.currentMotionSettings().echoScale"
       (input)="updateEchoScale($event)" />
     <p class="text-xs text-zinc-500">Distant silhouettes grow smaller or larger; the original player remains unchanged.</p>
   </div>
@@ -255,11 +284,11 @@
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-2">
       <label for="path-curve" class="text-sm text-zinc-300">Curved Motion Path</label>
-      <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().pathCurve }}%</span>
+      <span class="text-xs text-cyan-400">{{ editorStore.currentMotionSettings().pathCurve }}%</span>
     </div>
     <input id="path-curve" type="range" min="-100" max="100" step="5"
       class="w-full accent-cyan-400"
-      [value]="editorStore.motionSettings().pathCurve"
+      [value]="editorStore.currentMotionSettings().pathCurve"
       (input)="updatePathCurve($event)" />
     <div class="flex justify-between text-xs text-zinc-500">
       <span>Curve left</span><span>Straight (0)</span><span>Curve right</span>
@@ -270,11 +299,11 @@
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-2">
       <label for="echo-rotation" class="text-sm text-zinc-300">Echo Rotation</label>
-      <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().echoRotation }}°</span>
+      <span class="text-xs text-cyan-400">{{ editorStore.currentMotionSettings().echoRotation }}°</span>
     </div>
     <input id="echo-rotation" type="range" min="-45" max="45" step="1"
       class="w-full accent-cyan-400"
-      [value]="editorStore.motionSettings().echoRotation"
+      [value]="editorStore.currentMotionSettings().echoRotation"
       (input)="updateEchoRotation($event)" />
     <p class="text-xs text-zinc-500">Gradually rotate distant silhouettes around the detected player without rotating the original.</p>
   </div>
@@ -294,7 +323,7 @@
       <select
         id="trail-color-mode"
         class="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-white"
-        [value]="editorStore.motionSettings().trailColorMode"
+        [value]="editorStore.currentMotionSettings().trailColorMode"
         (change)="updateTrailColorMode($event)"
       >
         <option value="original">Original player colors</option>
@@ -303,31 +332,31 @@
       </select>
     </div>
 
-    @if (editorStore.motionSettings().trailColorMode !== 'original') {
+    @if (editorStore.currentMotionSettings().trailColorMode !== 'original') {
       <div class="flex items-center justify-between gap-3">
-        <label for="trail-color" class="text-sm text-zinc-300">{{ editorStore.motionSettings().trailColorMode === 'gradient' ? 'Near Echo Color' : 'Echo Color' }}</label>
+        <label for="trail-color" class="text-sm text-zinc-300">{{ editorStore.currentMotionSettings().trailColorMode === 'gradient' ? 'Near Echo Color' : 'Echo Color' }}</label>
         <div class="flex items-center gap-2">
           <input
             id="trail-color"
             type="color"
             class="h-10 w-12 cursor-pointer rounded border border-zinc-700 bg-zinc-900"
-            [value]="editorStore.motionSettings().trailColor"
+            [value]="editorStore.currentMotionSettings().trailColor"
             (input)="updateTrailColor($event)"
           />
-          <span class="text-xs text-zinc-400">{{ editorStore.motionSettings().trailColor }}</span>
+          <span class="text-xs text-zinc-400">{{ editorStore.currentMotionSettings().trailColor }}</span>
         </div>
       </div>
     }
 
-    @if (editorStore.motionSettings().trailColorMode === 'gradient') {
+    @if (editorStore.currentMotionSettings().trailColorMode === 'gradient') {
       <div class="flex items-center justify-between gap-3">
         <label for="trail-end-color" class="text-sm text-zinc-300">Far Echo Color</label>
         <div class="flex items-center gap-2">
           <input id="trail-end-color" type="color"
             class="h-10 w-12 cursor-pointer rounded border border-zinc-700 bg-zinc-900"
-            [value]="editorStore.motionSettings().trailEndColor"
+            [value]="editorStore.currentMotionSettings().trailEndColor"
             (input)="updateTrailEndColor($event)" />
-          <span class="text-xs text-zinc-400">{{ editorStore.motionSettings().trailEndColor }}</span>
+          <span class="text-xs text-zinc-400">{{ editorStore.currentMotionSettings().trailEndColor }}</span>
         </div>
       </div>
       <p class="text-xs text-zinc-500">Blend colors smoothly from nearby echoes to distant silhouettes.</p>
@@ -336,11 +365,11 @@
     <div class="space-y-2">
       <div class="flex items-center justify-between">
         <label for="directional-blur" class="text-sm text-zinc-300">Directional Motion Blur</label>
-        <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().directionalBlur }} px</span>
+        <span class="text-xs text-cyan-400">{{ editorStore.currentMotionSettings().directionalBlur }} px</span>
       </div>
       <input id="directional-blur" type="range" min="0" max="30" step="2"
         class="w-full accent-cyan-400"
-        [value]="editorStore.motionSettings().directionalBlur"
+        [value]="editorStore.currentMotionSettings().directionalBlur"
         (input)="updateDirectionalBlur($event)" />
       <p class="text-xs text-zinc-500">Adds motion streaks behind the echoes without blurring the main player.</p>
     </div>
@@ -349,17 +378,17 @@
       <input
         type="checkbox"
         class="h-4 w-4 accent-cyan-400"
-        [checked]="editorStore.motionSettings().glowEnabled"
+        [checked]="editorStore.currentMotionSettings().glowEnabled"
         (change)="updateGlowEnabled($event)"
       />
       Enable Neon Glow
     </label>
 
-    @if (editorStore.motionSettings().glowEnabled) {
+    @if (editorStore.currentMotionSettings().glowEnabled) {
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label for="glow-intensity" class="text-sm text-zinc-300">Glow Intensity</label>
-          <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().glowIntensity }}%</span>
+          <span class="text-xs text-cyan-400">{{ editorStore.currentMotionSettings().glowIntensity }}%</span>
         </div>
         <input
           id="glow-intensity"
@@ -368,14 +397,14 @@
           max="100"
           step="5"
           class="w-full accent-cyan-400"
-          [value]="editorStore.motionSettings().glowIntensity"
+          [value]="editorStore.currentMotionSettings().glowIntensity"
           (input)="updateGlowIntensity($event)"
         />
       </div>
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label for="glow-blur" class="text-sm text-zinc-300">Glow Radius</label>
-          <span class="text-xs text-cyan-400">{{ editorStore.motionSettings().glowBlur }} px</span>
+          <span class="text-xs text-cyan-400">{{ editorStore.currentMotionSettings().glowBlur }} px</span>
         </div>
         <input
           id="glow-blur"
@@ -384,7 +413,7 @@
           max="60"
           step="2"
           class="w-full accent-cyan-400"
-          [value]="editorStore.motionSettings().glowBlur"
+          [value]="editorStore.currentMotionSettings().glowBlur"
           (input)="updateGlowBlur($event)"
         />
       </div>
