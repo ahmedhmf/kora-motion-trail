@@ -9,6 +9,7 @@ import {
 import { MotionAnimationService } from '../../services/motion-animation.service';
 import { getEffectiveDurationSeconds } from '../../services/animation-timing';
 import { SideBar } from './side-bar/side-bar';
+import { MotionSettings } from '../../models/motion-settings.model';
 
 @Component({
   imports: [MaskEditor, ArtworkCanvas, SideBar],
@@ -23,6 +24,32 @@ export class WorkSpace {
 
   readonly isEditingMask = signal(false);
   readonly showMask = signal(false);
+  readonly selectingBall = signal(false);
+  readonly editingMotion = signal(false);
+
+  toggleBallSelection(): void {
+    this.stopAnimation();
+    this.selectingBall.update((value) => !value);
+    this.editingMotion.set(false);
+  }
+
+  toggleMotionHandles(): void {
+    this.stopAnimation();
+    this.editingMotion.update((value) => !value);
+    this.selectingBall.set(false);
+  }
+
+  onBallPicked(point: { x: number; y: number }): void {
+    this.stopAnimation();
+    this.editorStore.setBallSelection(point.x, point.y);
+    this.selectingBall.set(false);
+  }
+
+  onMotionPathChanged(changes: Partial<MotionSettings>): void {
+    this.stopAnimation();
+    this.editorStore.updateMotionSettings(changes);
+  }
+
   readonly animationFrame = signal<HTMLCanvasElement | null>(null);
   readonly hasAnimationStarted = signal(false);
   readonly isPlaying = signal(false);
@@ -41,6 +68,8 @@ export class WorkSpace {
 
     // Stop any existing animation.
     this.stopAnimation();
+    this.selectingBall.set(false);
+    this.editingMotion.set(false);
 
     // Upload and decode the image.
     await this.editorStore.uploadImage(file);
