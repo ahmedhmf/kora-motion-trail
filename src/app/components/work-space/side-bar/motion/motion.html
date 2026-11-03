@@ -14,9 +14,7 @@
         <button
           type="button"
           class="w-full rounded-lg border p-3 text-left transition-colors hover:bg-zinc-800"
-          [class.border-cyan-400]="activePreset() === preset.id"
-          [class.bg-cyan-400/10]="activePreset() === preset.id"
-          [class.border-zinc-700]="activePreset() !== preset.id"
+          [class]="activePreset() === preset.id ? 'border-cyan-400 bg-cyan-400/10' : 'border-zinc-700'"
           [attr.aria-pressed]="activePreset() === preset.id"
           (click)="applyPreset(preset.id)"
         >
