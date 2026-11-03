@@ -177,7 +177,7 @@ export class Motion {
 
   updateTrailColorMode(event: Event): void {
     const mode = (event.target as HTMLSelectElement).value;
-    if (mode !== 'original' && mode !== 'solid') return;
+    if (mode !== 'original' && mode !== 'solid' && mode !== 'gradient') return;
     this.updateEffect({ trailColorMode: mode });
   }
 
@@ -185,6 +185,18 @@ export class Motion {
     const color = (event.target as HTMLInputElement).value;
     if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
     this.updateEffect({ trailColor: color });
+  }
+
+  updateTrailEndColor(event: Event): void {
+    const color = (event.target as HTMLInputElement).value;
+    if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+    this.updateEffect({ trailEndColor: color });
+  }
+
+  updateDirectionalBlur(event: Event): void {
+    const amount = Number((event.target as HTMLInputElement).value);
+    if (!Number.isFinite(amount)) return;
+    this.updateEffect({ directionalBlur: Math.max(0, Math.min(30, amount)) });
   }
 
   updateGlowEnabled(event: Event): void {
