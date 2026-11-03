@@ -1,0 +1,205 @@
+<section class="grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+  <div class="min-w-0 space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h2 class="text-xl font-semibold">Video Lab <span class="text-sm font-normal text-cyan-400">Beta</span></h2>
+        <p class="mt-1 text-sm text-zinc-400">Independent player and ball motion effects on a short football clip.</p>
+      </div>
+      <label class="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-800">
+        {{ name() ? 'Replace clip' : 'Upload MP4 or WebM' }}
+        <input type="file" accept="video/mp4,video/webm" class="sr-only"
+          [disabled]="busy() || exporting()" (change)="onVideoSelected($event)" />
+      </label>
+    </div>
+
+    <div class="rounded-2xl border border-zinc-700 bg-zinc-900/60 p-3 sm:p-5">
+      <div class="mb-3 flex flex-wrap gap-2">
+        <span class="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300">
+          First {{ maxSeconds }} sec · {{ fps }} FPS · max 480px · silent export
+        </span>
+        @if (name()) {
+          <span class="self-center text-xs text-zinc-400">{{ name() }}</span>
+        }
+      </div>
+
+      @if (name() && !frames().length) {
+        <div class="flex flex-wrap items-center gap-3 py-3">
+          <button type="button" [disabled]="busy()" (click)="processClip()"
+            class="min-h-11 rounded-lg bg-cyan-500 px-5 py-2 font-semibold text-zinc-950 disabled:opacity-40">
+            {{ busy() ? 'Detecting player & ball…' : 'Process video frames' }}
+          </button>
+          @if (busy()) {
+            <button type="button" class="rounded-lg border border-zinc-600 px-3 py-2 text-sm" (click)="cancelProcessing()">Cancel</button>
+          }
+          <p class="text-xs text-zinc-400">Processing may take a while depending on your GPU/CPU.</p>
+        </div>
+      }
+
+      @if (!name()) {
+        <div class="flex min-h-[320px] items-center justify-center text-center text-zinc-400">
+          <div class="max-w-sm space-y-2">
+            <p class="text-lg font-medium text-white">Turn football footage into motion artwork</p>
+            <p class="text-sm">Upload a short MP4 or WebM clip. The editor detects player and ball separately on each sampled frame.</p>
+          </div>
+        </div>
+      }
+
+      @if (frames().length) {
+        <div class="mb-3 flex flex-wrap gap-2">
+          <button type="button" (click)="setPreview('artwork')"
+            [class]="previewMode() === 'artwork' ? 'border-cyan-400 text-cyan-200' : 'border-zinc-700 text-zinc-300'"
+            class="rounded-lg border px-3 py-2 text-xs">Artwork</button>
+          <button type="button" (click)="setPreview('source')"
+            [class]="previewMode() === 'source' ? 'border-cyan-400 text-cyan-200' : 'border-zinc-700 text-zinc-300'"
+            class="rounded-lg border px-3 py-2 text-xs">Original</button>
+          <button type="button" (click)="setPreview('player')"
+            [class]="previewMode() === 'player' ? 'border-cyan-400 text-cyan-200' : 'border-zinc-700 text-zinc-300'"
+            class="rounded-lg border px-3 py-2 text-xs">Player Mask</button>
+          <button type="button" (click)="setPreview('ball')"
+            [class]="previewMode() === 'ball' ? 'border-cyan-400 text-cyan-200' : 'border-zinc-700 text-zinc-300'"
+            class="rounded-lg border px-3 py-2 text-xs">Ball Mask</button>
+          <button type="button" (click)="setPreview('combined')"
+            [class]="previewMode() === 'combined' ? 'border-cyan-400 text-cyan-200' : 'border-zinc-700 text-zinc-300'"
+            class="rounded-lg border px-3 py-2 text-xs">Combined</button>
+        </div>
+      }
+
+      <canvas #previewCanvas
+        class="mx-auto block h-auto max-h-[70vh] w-auto max-w-full rounded-lg bg-black"
+        [class.hidden]="!frames().length"
+        aria-label="Processed video frame preview"></canvas>
+
+      @if (frames().length) {
+        <div class="mt-4 space-y-3">
+          <div class="flex items-center gap-3">
+            <button type="button" class="min-h-11 rounded-lg bg-zinc-700 px-5 py-2 text-sm" (click)="togglePlayback()">
+              {{ playing() ? 'Pause' : 'Play' }}
+            </button>
+            <span class="text-xs tabular-nums text-zinc-400">
+              Frame {{ frameIndex() + 1 }} / {{ frames().length }}
+            </span>
+          </div>
+          <input type="range" class="w-full accent-cyan-400" min="0"
+            [max]="frames().length - 1" step="1" [value]="frameIndex()"
+            (input)="seek($event)" aria-label="Seek sampled frames" />
+          <p class="text-xs text-zinc-500">Each frame is segmented separately. Tracking IDs, audio and high-frame-rate processing are not yet included.</p>
+        </div>
+      }
+    </div>
+
+    @if (busy() || exporting()) {
+      <div role="status" class="rounded-lg border border-cyan-600/30 bg-cyan-600/10 p-4">
+        <div class="mb-2 flex items-center justify-between gap-3 text-sm">
+          <span>{{ exporting() ? 'Encoding silent WebM…' : 'Detecting player and ball…' }}</span>
+          <span class="tabular-nums">{{ progress() }}%</span>
+        </div>
+        <div class="h-2 overflow-hidden rounded-full bg-zinc-700">
+          <div class="h-full bg-cyan-400" [style.width.%]="progress()"></div>
+        </div>
+      </div>
+    }
+    @if (error()) {
+      <p role="alert" class="rounded-lg border border-red-500/40 p-3 text-sm text-red-300">{{ error() }}</p>
+    }
+  </div>
+
+  <aside class="space-y-5 rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
+    <div class="space-y-3">
+      <h3 class="font-semibold">Subjects</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" class="rounded-lg border px-3 py-2 text-sm"
+          [class]="activeSubject() === 'player' ? 'border-cyan-400 bg-cyan-400/10' : 'border-zinc-700'"
+          (click)="selectSubject('player')">Player</button>
+        <button type="button" class="rounded-lg border px-3 py-2 text-sm"
+          [class]="activeSubject() === 'ball' ? 'border-cyan-400 bg-cyan-400/10' : 'border-zinc-700'"
+          (click)="selectSubject('ball')">Ball</button>
+      </div>
+      <p class="text-xs text-zinc-400">Only the selected subject's settings change. Both remain visible together in the artwork.</p>
+    </div>
+
+    <div class="space-y-4 border-t border-zinc-700 pt-4">
+      <h3 class="font-semibold">Motion effects</h3>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-intensity">Intensity</label><span>{{ currentSettings().intensity }}%</span></div>
+        <input id="video-intensity" class="w-full accent-cyan-400" type="range" min="0" max="100" step="5"
+          [value]="currentSettings().intensity" (input)="updateNumber('intensity',$event)" />
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-layers">Echo layers</label><span>{{ currentSettings().layers }}</span></div>
+        <input id="video-layers" class="w-full accent-cyan-400" type="range" min="1" max="18" step="1"
+          [value]="currentSettings().layers" (input)="updateNumber('layers',$event)" />
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-strength">Trail strength</label><span>{{ currentSettings().trailStrength }}%</span></div>
+        <input id="video-strength" class="w-full accent-cyan-400" type="range" min="0" max="100" step="5"
+          [value]="currentSettings().trailStrength" (input)="updateNumber('trailStrength',$event)" />
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-angle">Direction</label><span>{{ currentSettings().directionAngle }}°</span></div>
+        <input id="video-angle" class="w-full accent-cyan-400" type="range" min="0" max="360" step="5"
+          [value]="currentSettings().directionAngle" (input)="updateDirection($event)" />
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-distance">Distance</label><span>{{ currentSettings().trailDistance }}%</span></div>
+        <input id="video-distance" class="w-full accent-cyan-400" type="range" min="0" max="200" step="5"
+          [value]="currentSettings().trailDistance" (input)="updateNumber('trailDistance',$event)" />
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-curve">Path curve</label><span>{{ currentSettings().pathCurve }}%</span></div>
+        <input id="video-curve" class="w-full accent-cyan-400" type="range" min="-100" max="100" step="5"
+          [value]="currentSettings().pathCurve" (input)="updateNumber('pathCurve',$event)" />
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-rotation">Rotation</label><span>{{ currentSettings().echoRotation }}°</span></div>
+        <input id="video-rotation" class="w-full accent-cyan-400" type="range" min="-45" max="45" step="5"
+          [value]="currentSettings().echoRotation" (input)="updateNumber('echoRotation',$event)" />
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-echo-scale">Echo scale</label><span>{{ currentSettings().echoScale }}%</span></div>
+        <input id="video-echo-scale" class="w-full accent-cyan-400" type="range" min="50" max="150" step="5"
+          [value]="currentSettings().echoScale" (input)="updateNumber('echoScale',$event)" />
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs"><label for="video-blur">Directional blur</label><span>{{ currentSettings().directionalBlur }}px</span></div>
+        <input id="video-blur" class="w-full accent-cyan-400" type="range" min="0" max="30" step="2"
+          [value]="currentSettings().directionalBlur" (input)="updateNumber('directionalBlur',$event)" />
+      </div>
+      <div class="space-y-2">
+        <label for="video-color-mode" class="block text-xs">Trail colors</label>
+        <select id="video-color-mode" class="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm"
+          [value]="currentSettings().trailColorMode" (change)="updateColorMode($event)">
+          <option value="original">Original</option>
+          <option value="solid">Solid</option>
+          <option value="gradient">Gradient</option>
+        </select>
+        @if (currentSettings().trailColorMode !== 'original') {
+          <div class="flex items-center justify-between text-xs">
+            <label for="video-color-a">Near color</label>
+            <input id="video-color-a" type="color" [value]="currentSettings().trailColor"
+              (input)="updateColor('trailColor',$event)" />
+          </div>
+          @if (currentSettings().trailColorMode === 'gradient') {
+            <div class="flex items-center justify-between text-xs">
+              <label for="video-color-b">Far color</label>
+              <input id="video-color-b" type="color" [value]="currentSettings().trailEndColor"
+                (input)="updateColor('trailEndColor',$event)" />
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="space-y-2 border-t border-zinc-700 pt-4">
+      <h3 class="font-semibold">Export</h3>
+      <button type="button" [disabled]="!frames().length || busy() || exporting()"
+        class="min-h-11 w-full rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-zinc-950 disabled:opacity-40"
+        (click)="exportClip()">
+        {{ exporting() ? 'Exporting…' : 'Export short WebM' }}
+      </button>
+      <p class="text-xs leading-5 text-zinc-400">
+        Beta limit: first 5 seconds, 6 FPS and max 480px dimension. Output contains video only (no source audio).
+        For longer clips, higher quality and mask corrections between frames, we'll add a full timeline workflow next.
+      </p>
+    </div>
+  </aside>
+</section>

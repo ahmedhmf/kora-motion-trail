@@ -6,16 +6,30 @@
     <div>
       <h1 class="text-xl font-bold tracking-tight sm:text-2xl">Football Art Lab</h1>
 
-      <p class="mt-1 text-xs text-zinc-400 sm:text-sm">Creative Football Image Processing Studio</p>
+      <p class="mt-1 text-xs text-zinc-400 sm:text-sm">Creative Football Photo &amp; Video Studio</p>
     </div>
   </header>
 
   <!-- MAIN EDITOR -->
-  <main
-    class="mx-auto w-full max-w-[1800px] p-4 sm:p-6 lg:p-8"
-  >
-    <app-work-space
-      class="grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6"
-    ></app-work-space>
+  <main class="mx-auto w-full max-w-[1800px] p-4 sm:p-6 lg:p-8">
+    <div class="mb-6 flex flex-wrap gap-2" role="group" aria-label="Choose editor mode">
+      <button type="button" (click)="editorMode.set('photo')"
+        [class]="editorMode() === 'photo' ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-zinc-700 text-zinc-300'"
+        class="min-h-11 rounded-lg border px-5 py-2 text-sm">
+        Photo Editor
+      </button>
+      <button type="button" (click)="editorMode.set('video')"
+        [class]="editorMode() === 'video' ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-zinc-700 text-zinc-300'"
+        class="min-h-11 rounded-lg border px-5 py-2 text-sm">
+        Video Lab (Beta)
+      </button>
+    </div>
+    @if (editorMode() === 'photo') {
+      <app-work-space
+        class="grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6"
+      ></app-work-space>
+    } @else {
+      <app-video-lab />
+    }
   </main>
 </div>
