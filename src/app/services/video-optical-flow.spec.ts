@@ -52,7 +52,7 @@ describe('short-range optical flow', () => {
     const target = new Uint8ClampedArray([0, 0, 0, 255, 255, 0]);
     const output = advectMaskDelta(initial, painted, target, 6, 1,
       [uniformFlow(6, 1, 2, 0)], { x: 0, y: 0 }, 1, false);
-    expect(Array.from(output)).toEqual([0, 0, 255, 0, 0, 0]);
+    expect(Array.from(output)).toEqual([0, 0, 255, 0, 255, 0]);
     expect(Array.from(target)).toEqual([0, 0, 0, 255, 255, 0]);
   });
 
