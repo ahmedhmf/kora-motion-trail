@@ -12,7 +12,8 @@ import { MotionTrailsService } from '../services/motion-trails.service';
 import { BallSelection, MotionSubject, getBallSelectionAt } from '../models/subject-selection.model';
 import {
   splitSubjectMasks, combineSubjectMasks, cloneBallMask,
-  paintBallMaskStroke, rebuildMasksFromBall, type BallBrushMode,
+  paintBallMaskStroke, rebuildMasksFromBall, scaleDetectedBallMask,
+  excludeBallFromPlayer, type BallBrushMode,
 } from '../services/subject-masks';
 
 type EditorState = {
@@ -35,6 +36,8 @@ type EditorState = {
   playerOnlyMask: HTMLCanvasElement | null;
   detectedPlayerMask: HTMLCanvasElement | null;
   detectedBallMask: HTMLCanvasElement | null;
+  ballMaskScale: number;
+  ballMaskEdited: boolean;
   playerMask: HTMLCanvasElement | null;
   isDetectingPlayer: boolean;
   detectionError: string | null;
@@ -60,6 +63,8 @@ const initialState: EditorState = {
   playerOnlyMask: null,
   detectedPlayerMask: null,
   detectedBallMask: null,
+  ballMaskScale: 100,
+  ballMaskEdited: false,
   playerMask: null,
   isMaskLoading: false,
   maskError: null,
@@ -107,6 +112,8 @@ export const EditorStore = signalStore(
             playerOnlyMask: null,
             detectedPlayerMask: null,
             detectedBallMask: null,
+            ballMaskScale: 100,
+            ballMaskEdited: false,
             ballSelection: null,
             activeSubject: 'player',
             ballMotionSettings: { ...DEFAULT_MOTION_SETTINGS },
@@ -179,6 +186,7 @@ export const EditorStore = signalStore(
         motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           ballMask: result.ball,
+          ballMaskEdited: true,
           playerOnlyMask: result.player,
           playerMask: result.combined,
           refiningBallMask: false,
@@ -215,6 +223,30 @@ export const EditorStore = signalStore(
         patchState(store, { ballMaskRevision: store.ballMaskRevision() + 1 });
       },
 
+      setBallMaskScale(value: number): void {
+        // A hand-refined mask must never be discarded by the size slider.
+        const detectedBall = store.detectedBallMask();
+        const detectedPlayer = store.detectedPlayerMask();
+        if (!detectedBall || !detectedPlayer || store.ballMaskEdited() ||
+            store.refiningBallMask() || store.ballSelection() ||
+            !Number.isFinite(value)) return;
+
+        const ballMaskScale = Math.max(50, Math.min(250, Math.round(value / 5) * 5));
+        if (ballMaskScale === store.ballMaskScale()) return;
+
+        const ballMask = scaleDetectedBallMask(detectedBall, ballMaskScale);
+        const playerMask = excludeBallFromPlayer(detectedPlayer, ballMask);
+        const combinedMask = combineSubjectMasks(playerMask, ballMask);
+        motionTrailsService.invalidateSubjectCache();
+        patchState(store, {
+          ballMaskScale,
+          ballMask,
+          playerOnlyMask: playerMask,
+          playerMask: combinedMask,
+        });
+        this.applyMotionTrails();
+      },
+
       setBallSelection(x: number, y: number, radius?: number): void {
         const uploaded = store.uploadedImage();
         const basePlayer = store.detectedPlayerMask() ?? store.playerOnlyMask() ?? store.playerMask();
@@ -230,6 +262,7 @@ export const EditorStore = signalStore(
         motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           ballSelection: selection,
+          ballMaskEdited: false,
           ballMask: separated.ball,
           playerOnlyMask: separated.player,
           playerMask: combined,
@@ -249,13 +282,21 @@ export const EditorStore = signalStore(
       clearBallSelection(): void {
         const player = store.detectedPlayerMask();
         const ball = store.detectedBallMask();
-        const combined = player && ball ? combineSubjectMasks(player, ball) : player;
+        const originalBall = ball && player && store.ballMaskScale() !== 100
+          ? scaleDetectedBallMask(ball, store.ballMaskScale())
+          : ball;
+        const finalPlayer = player && originalBall
+          ? excludeBallFromPlayer(player, originalBall)
+          : player;
+        const combined = finalPlayer && originalBall
+          ? combineSubjectMasks(finalPlayer, originalBall) : finalPlayer;
         motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           ballSelection: null,
           playerMask: combined ?? store.playerMask(),
-          ballMask: ball,
-          playerOnlyMask: player ?? store.playerMask(),
+          ballMask: originalBall,
+          ballMaskEdited: false,
+          playerOnlyMask: finalPlayer ?? store.playerMask(),
           activeSubject: 'player',
         });
         this.applyMotionTrails();
@@ -273,6 +314,8 @@ export const EditorStore = signalStore(
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
+          ballMaskScale: 100,
+          ballMaskEdited: false,
           ballSelection: null,
           activeSubject: 'player',
           error: null,
@@ -299,6 +342,8 @@ export const EditorStore = signalStore(
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
+          ballMaskScale: 100,
+          ballMaskEdited: false,
           ballSelection: null,
           activeSubject: 'player',
           processedImage: null,
@@ -318,6 +363,8 @@ export const EditorStore = signalStore(
             playerOnlyMask: masks.player,
             detectedPlayerMask: masks.player,
             detectedBallMask: masks.ball,
+            ballMaskScale: 100,
+            ballMaskEdited: false,
             ballMotionSettings: { ...store.motionSettings() },
             ballSelection: null,
             activeSubject: 'player',
@@ -348,6 +395,8 @@ export const EditorStore = signalStore(
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
+          ballMaskScale: 100,
+          ballMaskEdited: false,
           ballSelection: null,
           activeSubject: 'player',
           maskError: null,
@@ -376,6 +425,8 @@ export const EditorStore = signalStore(
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
+          ballMaskScale: 100,
+          ballMaskEdited: false,
           ballSelection: null,
           activeSubject: 'player',
           processedImage: null,
