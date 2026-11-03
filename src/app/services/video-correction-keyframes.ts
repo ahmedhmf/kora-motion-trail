@@ -2,8 +2,13 @@ import type { TrackCenter, TrackedSubject } from './subject-tracking';
 import type { SegmentedClipFrame } from './video-clip-frames.service';
 import { combineSubjectMasks, excludeBallFromPlayer } from './subject-masks';
 import {
-  maskCenter, propagatePaintedMask, translateVideoMask,
+  maskBrightness, maskCenter, propagatePaintedMask, translateVideoMask,
+  videoMaskFromBrightness,
 } from './video-mask-paint';
+import {
+  advectMaskDelta, computeFlowField, toGrayFrame,
+  type FlowField, type GrayFrame,
+} from './video-optical-flow';
 
 export const CORRECTION_PROPAGATION_FRAMES = 2;
 
@@ -118,6 +123,7 @@ function hasForeground(canvas: HTMLCanvasElement | null): boolean {
 export function applyVideoCorrections(
   original: readonly SegmentedClipFrame[],
   corrections: readonly VideoCorrectionKeyframe[],
+  useOpticalFlow = true,
 ): SegmentedClipFrame[] {
   if (!original.length || !corrections.length) return [...original];
   const width = original[0].source.width;
@@ -127,6 +133,34 @@ export function applyVideoCorrections(
       throw new Error('Invalid correction keyframe.');
     }
   }
+
+  // Derived and cached once per edit rebuild, never per exported video frame.
+  // Optical flow is computed only for neighboring pairs that are actually used.
+  const gray = new Map<number, GrayFrame>();
+  const fields = new Map<string, FlowField>();
+  const getGray = (index: number): GrayFrame => {
+    let frame = gray.get(index);
+    if (!frame) {
+      frame = toGrayFrame(original[index].source);
+      gray.set(index, frame);
+    }
+    return frame;
+  };
+  const flowPath = (from: number, to: number): FlowField[] => {
+    const flows: FlowField[] = [];
+    const direction = from < to ? 1 : -1;
+    for (let i = from; i !== to; i += direction) {
+      const j = i + direction;
+      const key = `${i}:${j}`;
+      let field = fields.get(key);
+      if (!field) {
+        field = computeFlowField(getGray(i), getGray(j));
+        fields.set(key, field);
+      }
+      flows.push(field);
+    }
+    return flows;
+  };
 
   return original.map((frame, index) => {
     let player = frame.player;
@@ -159,10 +193,26 @@ export function applyVideoCorrections(
           const anchor = donorCenter ?? keyframe.center;
           const target = currentCenter ?? keyframe.center;
           const offset = { x: target.x - anchor.x, y: target.y - anchor.y };
-          nextMask = hasForeground(ownMask)
-            ? propagatePaintedMask(donorMask, keyframe.paintedMask, ownMask,
-                offset, influence)
-            : translateVideoMask(keyframe.paintedMask, offset);
+          if (useOpticalFlow) {
+            const initial = donorMask
+              ? maskBrightness(donorMask)
+              : new Uint8ClampedArray(width * height);
+            const painted = maskBrightness(keyframe.paintedMask);
+            const hasOwnMask = hasForeground(ownMask);
+            const targetPixels = hasOwnMask
+              ? maskBrightness(ownMask!)
+              : new Uint8ClampedArray(width * height);
+            const warped = advectMaskDelta(
+              initial, painted, targetPixels, width, height,
+              flowPath(keyframe.frame, index), offset, influence, !hasOwnMask,
+            );
+            nextMask = videoMaskFromBrightness(warped, width, height);
+          } else {
+            nextMask = hasForeground(ownMask)
+              ? propagatePaintedMask(donorMask, keyframe.paintedMask, ownMask,
+                  offset, influence)
+              : translateVideoMask(keyframe.paintedMask, offset);
+          }
         }
       } else if (hasForeground(ownMask) && donorCenter) {
         // Smoothly fade the user correction back to YOLO's own segmentation.
