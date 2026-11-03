@@ -23,6 +23,7 @@ import {
       <canvas
         #canvas
         class="block h-auto max-w-full cursor-grab rounded border border-zinc-700 touch-none active:cursor-grabbing"
+        [class.cursor-not-allowed]="disabled"
         aria-label="Export crop preview. Drag to reposition the photograph."
         (pointerdown)="onPointerDown($event)"
         (pointermove)="onPointerMove($event)"
@@ -36,6 +37,7 @@ import {
 export class ExportFramePreview implements AfterViewInit, OnChanges {
   @ViewChild('canvas') private canvasRef!: ElementRef<HTMLCanvasElement>;
   @Input() source: HTMLCanvasElement | HTMLImageElement | null = null;
+  @Input() disabled = false;
   @Input({ required: true }) settings!: VideoExportSettings;
   @Output() positionChange = new EventEmitter<{ offsetX: number; offsetY: number }>();
 
@@ -100,7 +102,7 @@ export class ExportFramePreview implements AfterViewInit, OnChanges {
   }
 
   onPointerDown(event: PointerEvent): void {
-    if (!this.source || !this.sourceDimensions()) return;
+    if (this.disabled || !this.source || !this.sourceDimensions()) return;
     const canvas = this.canvasRef.nativeElement;
     this.drag = {
       pointerId: event.pointerId,
