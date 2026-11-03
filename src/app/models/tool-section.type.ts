@@ -1,4 +1,5 @@
 type ToolSection =
+  | 'subjects'
   | 'presets'
   | 'motion'
   | 'advanced-motion'
