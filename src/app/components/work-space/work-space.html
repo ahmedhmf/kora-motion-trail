@@ -99,4 +99,10 @@
       }
     </section>
 
-    <app-side-bar (stopAnimation)="stopAnimation()" (playAnimation)="playAnimation()" [videoSettings]="videoSettings()" (updateVideoSettings)="onUpdateVideoSettings($event)"></app-side-bar>
+    <app-side-bar
+      [isPlaying]="isPlaying()"
+      [videoSettings]="videoSettings()"
+      (stopAnimation)="stopAnimation()"
+      (playAnimation)="playAnimation()"
+      (updateVideoSettings)="onUpdateVideoSettings($event)"
+    ></app-side-bar>
