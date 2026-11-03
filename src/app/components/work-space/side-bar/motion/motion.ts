@@ -1,7 +1,10 @@
 import { Component, ElementRef, inject, output, signal, ViewChild } from '@angular/core';
 import { CollapsibleSection } from '../../../../ui-components/collapsible-section/collapsible-section';
 import { EditorStore } from '../../../../stores/editor.store';
-import { MotionSettings, MotionDirection, DEFAULT_MOTION_SETTINGS } from '../../../../models/motion-settings.model';
+import {
+  MotionSettings, MotionDirection, DEFAULT_MOTION_SETTINGS, DIRECTION_ANGLES,
+  TrailFadeCurve, TrailSpacing,
+} from '../../../../models/motion-settings.model';
 import { CustomMotionPresetsService } from '../../../../services/custom-motion-presets.service';
 import {
   MOTION_PRESETS,
@@ -101,7 +104,7 @@ export class Motion {
   updateDirection(event: Event): void {
     const direction = (event.target as HTMLSelectElement).value;
     if (!['left', 'right', 'up', 'down'].includes(direction)) return;
-    this.updateEffect({ direction: direction as MotionDirection });
+    this.updateEffect({ direction: direction as MotionDirection, directionAngle: DIRECTION_ANGLES[direction as MotionDirection] });
   }
 
 
@@ -120,6 +123,42 @@ export class Motion {
       visibility,
     });
   }
+  updateTrailDistance(event: Event): void {
+    this.updateEffect({ trailDistance: Number((event.target as HTMLInputElement).value) });
+  }
+
+  updateTrailSpacing(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (!['tight', 'normal', 'wide'].includes(value)) return;
+    this.updateEffect({ trailSpacing: value as TrailSpacing });
+  }
+
+  updateDirectionAngle(event: Event): void {
+    const directionAngle = Number((event.target as HTMLInputElement).value);
+    if (!Number.isFinite(directionAngle)) return;
+    this.updateEffect({ directionAngle });
+  }
+
+  updateTrailFadeCurve(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (!['classic', 'linear', 'smooth', 'sharp', 'constant'].includes(value)) return;
+    this.updateEffect({ trailFadeCurve: value as TrailFadeCurve });
+  }
+
+  updateEchoScale(event: Event): void {
+    this.updateEffect({ echoScale: Number((event.target as HTMLInputElement).value) });
+  }
+
+  resetAdvancedMotion(): void {
+    this.updateEffect({
+      trailDistance: DEFAULT_MOTION_SETTINGS.trailDistance,
+      trailSpacing: DEFAULT_MOTION_SETTINGS.trailSpacing,
+      directionAngle: DIRECTION_ANGLES[this.editorStore.motionSettings().direction],
+      trailFadeCurve: DEFAULT_MOTION_SETTINGS.trailFadeCurve,
+      echoScale: DEFAULT_MOTION_SETTINGS.echoScale,
+    });
+  }
+
   updateTrailColorMode(event: Event): void {
     const mode = (event.target as HTMLSelectElement).value;
     if (mode !== 'original' && mode !== 'solid') return;
