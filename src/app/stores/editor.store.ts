@@ -10,7 +10,7 @@ import { DEFAULT_MASK_BRUSH, MaskBrushSettings } from '../models/mask-brush.mode
 import { YoloSegmentationService } from '../services/yolo-segmentation.service';
 import { MotionTrailsService } from '../services/motion-trails.service';
 import { BallSelection, MotionSubject, getBallSelectionAt } from '../models/subject-selection.model';
-import { splitSubjectMasks } from '../services/subject-masks';
+import { splitSubjectMasks, combineSubjectMasks } from '../services/subject-masks';
 
 type EditorState = {
   uploadedImage: UploadedImage | null;
@@ -24,6 +24,8 @@ type EditorState = {
   ballSelection: BallSelection | null;
   ballMask: HTMLCanvasElement | null;
   playerOnlyMask: HTMLCanvasElement | null;
+  detectedPlayerMask: HTMLCanvasElement | null;
+  detectedBallMask: HTMLCanvasElement | null;
   playerMask: HTMLCanvasElement | null;
   isDetectingPlayer: boolean;
   detectionError: string | null;
@@ -41,6 +43,8 @@ const initialState: EditorState = {
   ballSelection: null,
   ballMask: null,
   playerOnlyMask: null,
+  detectedPlayerMask: null,
+  detectedBallMask: null,
   playerMask: null,
   isMaskLoading: false,
   maskError: null,
@@ -83,6 +87,8 @@ export const EditorStore = signalStore(
             playerMask: null,
             ballMask: null,
             playerOnlyMask: null,
+            detectedPlayerMask: null,
+            detectedBallMask: null,
             ballSelection: null,
             activeSubject: 'player',
             ballMotionSettings: { ...DEFAULT_MOTION_SETTINGS },
@@ -127,21 +133,23 @@ export const EditorStore = signalStore(
 
       setBallSelection(x: number, y: number, radius?: number): void {
         const uploaded = store.uploadedImage();
-        const mask = store.playerMask();
-        if (!uploaded || !mask) return;
+        const basePlayer = store.detectedPlayerMask() ?? store.playerOnlyMask() ?? store.playerMask();
+        if (!uploaded || !basePlayer) return;
+
         const selection = getBallSelectionAt(
           x, y, radius ?? Math.max(6, Math.round(Math.min(uploaded.width, uploaded.height) * 0.025)),
-          mask.width, mask.height,
+          basePlayer.width, basePlayer.height,
         );
-        const separated = splitSubjectMasks(mask, selection);
+        const separated = splitSubjectMasks(basePlayer, selection);
+        const combined = combineSubjectMasks(separated.player, separated.ball);
+        const hadBall = !!store.ballMask();
         motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           ballSelection: selection,
           ballMask: separated.ball,
           playerOnlyMask: separated.player,
-          // First separation preserves the existing appearance. Moving the
-          // selection later retains the ball's independently edited settings.
-          ballMotionSettings: store.ballSelection()
+          playerMask: combined,
+          ballMotionSettings: hadBall
             ? store.ballMotionSettings()
             : { ...store.motionSettings() },
           activeSubject: 'ball',
@@ -155,11 +163,15 @@ export const EditorStore = signalStore(
       },
 
       clearBallSelection(): void {
+        const player = store.detectedPlayerMask();
+        const ball = store.detectedBallMask();
+        const combined = player && ball ? combineSubjectMasks(player, ball) : player;
         motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           ballSelection: null,
-          ballMask: null,
-          playerOnlyMask: null,
+          playerMask: combined ?? store.playerMask(),
+          ballMask: ball,
+          playerOnlyMask: player ?? store.playerMask(),
           activeSubject: 'player',
         });
         this.applyMotionTrails();
@@ -172,6 +184,8 @@ export const EditorStore = signalStore(
           playerMask: null,
           ballMask: null,
           playerOnlyMask: null,
+          detectedPlayerMask: null,
+          detectedBallMask: null,
           ballSelection: null,
           activeSubject: 'player',
           error: null,
@@ -193,13 +207,15 @@ export const EditorStore = signalStore(
           playerMask: null,
           ballMask: null,
           playerOnlyMask: null,
+          detectedPlayerMask: null,
+          detectedBallMask: null,
           ballSelection: null,
           activeSubject: 'player',
           processedImage: null,
         });
 
         try {
-          const mask = await segmentationService.generateMask(uploaded.image);
+          const masks = await segmentationService.generateSubjectMasks(uploaded.image);
 
           // Avoid applying results to a different uploaded photo.
           if (store.uploadedImage() !== uploaded) {
@@ -207,13 +223,17 @@ export const EditorStore = signalStore(
           }
 
           patchState(store, {
-            playerMask: mask,
-            ballMask: null,
-            playerOnlyMask: null,
+            playerMask: masks.combined,
+            ballMask: masks.ball,
+            playerOnlyMask: masks.player,
+            detectedPlayerMask: masks.player,
+            detectedBallMask: masks.ball,
+            ballMotionSettings: { ...store.motionSettings() },
             ballSelection: null,
             activeSubject: 'player',
             processedImage: null,
           });
+          this.applyMotionTrails();
         } catch (error) {
           if (store.uploadedImage() === uploaded) {
             patchState(store, {
@@ -233,6 +253,8 @@ export const EditorStore = signalStore(
           playerMask: null,
           ballMask: null,
           playerOnlyMask: null,
+          detectedPlayerMask: null,
+          detectedBallMask: null,
           ballSelection: null,
           activeSubject: 'player',
           maskError: null,
@@ -256,6 +278,8 @@ export const EditorStore = signalStore(
           playerMask: mask,
           ballMask: null,
           playerOnlyMask: null,
+          detectedPlayerMask: null,
+          detectedBallMask: null,
           ballSelection: null,
           activeSubject: 'player',
           processedImage: null,
