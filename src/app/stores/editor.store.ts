@@ -10,7 +10,7 @@ import { DEFAULT_MASK_BRUSH, MaskBrushSettings } from '../models/mask-brush.mode
 import { YoloSegmentationService } from '../services/yolo-segmentation.service';
 import { MotionTrailsService } from '../services/motion-trails.service';
 import { BallSelection, MotionSubject, getBallSelectionAt } from '../models/subject-selection.model';
-import { splitSubjectMasks, combineSubjectMasks } from '../services/subject-masks';
+import { splitSubjectMasks, combineSubjectMasks, scaleDetectedBallMask, excludeBallFromPlayer } from '../services/subject-masks';
 
 type EditorState = {
   uploadedImage: UploadedImage | null;
@@ -26,6 +26,7 @@ type EditorState = {
   playerOnlyMask: HTMLCanvasElement | null;
   detectedPlayerMask: HTMLCanvasElement | null;
   detectedBallMask: HTMLCanvasElement | null;
+  ballMaskScale: number;
   playerMask: HTMLCanvasElement | null;
   isDetectingPlayer: boolean;
   detectionError: string | null;
@@ -45,6 +46,7 @@ const initialState: EditorState = {
   playerOnlyMask: null,
   detectedPlayerMask: null,
   detectedBallMask: null,
+  ballMaskScale: 100,
   playerMask: null,
   isMaskLoading: false,
   maskError: null,
@@ -89,6 +91,7 @@ export const EditorStore = signalStore(
             playerOnlyMask: null,
             detectedPlayerMask: null,
             detectedBallMask: null,
+            ballMaskScale: 100,
             ballSelection: null,
             activeSubject: 'player',
             ballMotionSettings: { ...DEFAULT_MOTION_SETTINGS },
@@ -131,6 +134,25 @@ export const EditorStore = signalStore(
         });
       },
 
+      setBallMaskScale(value: number): void {
+        const detectedBall = store.detectedBallMask();
+        const detectedPlayer = store.detectedPlayerMask();
+        if (!detectedBall || !detectedPlayer || !Number.isFinite(value)) return;
+        const ballMaskScale = Math.max(50, Math.min(250, Math.round(value / 5) * 5));
+        const ball = scaleDetectedBallMask(detectedBall, ballMaskScale);
+        const player = excludeBallFromPlayer(detectedPlayer, ball);
+        const combined = combineSubjectMasks(player, ball);
+        motionTrailsService.invalidateSubjectCache();
+        patchState(store, {
+          ballMaskScale,
+          ballMask: ball,
+          playerOnlyMask: player,
+          playerMask: combined,
+          ballSelection: null,
+        });
+        this.applyMotionTrails();
+      },
+
       setBallSelection(x: number, y: number, radius?: number): void {
         const uploaded = store.uploadedImage();
         const basePlayer = store.detectedPlayerMask() ?? store.playerOnlyMask() ?? store.playerMask();
@@ -165,13 +187,17 @@ export const EditorStore = signalStore(
       clearBallSelection(): void {
         const player = store.detectedPlayerMask();
         const ball = store.detectedBallMask();
-        const combined = player && ball ? combineSubjectMasks(player, ball) : player;
+        const resizedBall = ball ? scaleDetectedBallMask(ball, store.ballMaskScale()) : null;
+        const resizedPlayer = player && resizedBall
+          ? excludeBallFromPlayer(player, resizedBall) : player;
+        const combined = resizedPlayer && resizedBall
+          ? combineSubjectMasks(resizedPlayer, resizedBall) : resizedPlayer;
         motionTrailsService.invalidateSubjectCache();
         patchState(store, {
           ballSelection: null,
           playerMask: combined ?? store.playerMask(),
-          ballMask: ball,
-          playerOnlyMask: player ?? store.playerMask(),
+          ballMask: resizedBall,
+          playerOnlyMask: resizedPlayer ?? store.playerMask(),
           activeSubject: 'player',
         });
         this.applyMotionTrails();
@@ -186,6 +212,7 @@ export const EditorStore = signalStore(
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
+          ballMaskScale: 100,
           ballSelection: null,
           activeSubject: 'player',
           error: null,
@@ -209,6 +236,7 @@ export const EditorStore = signalStore(
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
+          ballMaskScale: 100,
           ballSelection: null,
           activeSubject: 'player',
           processedImage: null,
@@ -228,6 +256,7 @@ export const EditorStore = signalStore(
             playerOnlyMask: masks.player,
             detectedPlayerMask: masks.player,
             detectedBallMask: masks.ball,
+            ballMaskScale: 100,
             ballMotionSettings: { ...store.motionSettings() },
             ballSelection: null,
             activeSubject: 'player',
@@ -255,6 +284,7 @@ export const EditorStore = signalStore(
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
+          ballMaskScale: 100,
           ballSelection: null,
           activeSubject: 'player',
           maskError: null,
@@ -280,6 +310,7 @@ export const EditorStore = signalStore(
           playerOnlyMask: null,
           detectedPlayerMask: null,
           detectedBallMask: null,
+          ballMaskScale: 100,
           ballSelection: null,
           activeSubject: 'player',
           processedImage: null,
