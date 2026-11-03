@@ -45,6 +45,28 @@
       }
 
       @if (frames().length) {
+        <div class="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-950/60 p-3">
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-zinc-200">
+            <input type="checkbox" class="accent-cyan-400"
+              [checked]="showTrackingOverlay()" (change)="toggleTrackingOverlay()" />
+            Show tracking overlay
+          </label>
+          @if (currentTracking(); as tracking) {
+            <span class="text-xs text-cyan-300">
+              Player: {{ tracking.player.status }}
+            </span>
+            <span class="text-xs text-yellow-300">
+              Ball: {{ tracking.ball.status }}
+            </span>
+          }
+          <p class="w-full text-xs text-zinc-400">
+            Solid boxes: detected · Dashed circles: short-gap predicted position ·
+            Missing: no reliable track. Predictions do not create fake masks.
+            The guides are excluded from video export.
+          </p>
+        </div>
+      }
+      @if (frames().length) {
         <div class="mb-3 flex flex-wrap gap-2">
           <button type="button" (click)="setPreview('artwork')"
             [class]="previewMode() === 'artwork' ? 'border-cyan-400 text-cyan-200' : 'border-zinc-700 text-zinc-300'"
@@ -82,7 +104,7 @@
           <input type="range" class="w-full accent-cyan-400" min="0"
             [max]="frames().length - 1" step="1" [value]="frameIndex()"
             (input)="seek($event)" aria-label="Seek sampled frames" />
-          <p class="text-xs text-zinc-500">Each frame is segmented separately. Tracking IDs, audio and high-frame-rate processing are not yet included.</p>
+          <p class="text-xs text-zinc-500">Each frame is segmented separately and player/ball centres are matched and smoothed across samples. No multi-player identities, audio or high-frame-rate processing yet.</p>
         </div>
       }
     </div>
