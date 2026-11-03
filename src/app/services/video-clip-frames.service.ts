@@ -172,25 +172,32 @@ export class VideoClipFramesService {
   }
 
   private async seek(video: HTMLVideoElement, time: number): Promise<void> {
-    if (Math.abs(video.currentTime - time) < 0.001 && video.readyState >= 2) return;
+    const alreadyAtTime = Math.abs(video.currentTime - time) < 0.001;
+    if (alreadyAtTime && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return;
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         cleanup();
-        reject(new Error('Timed out seeking a video frame.'));
+        reject(new Error('Timed out decoding or seeking a video frame.'));
       }, 10000);
       const cleanup = () => {
         clearTimeout(timeout);
-        video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('loadeddata', onReady);
+        video.removeEventListener('seeked', onReady);
         video.removeEventListener('error', onError);
       };
-      const onSeeked = () => { cleanup(); resolve(); };
+      const onReady = () => {
+        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+        cleanup();
+        resolve();
+      };
       const onError = () => {
         cleanup();
         reject(new Error('Unable to decode a video frame.'));
       };
-      video.addEventListener('seeked', onSeeked, { once: true });
-      video.addEventListener('error', onError, { once: true });
-      video.currentTime = time;
+      video.addEventListener('loadeddata', onReady);
+      video.addEventListener('seeked', onReady);
+      video.addEventListener('error', onError);
+      if (!alreadyAtTime) video.currentTime = time;
     });
   }
 }
