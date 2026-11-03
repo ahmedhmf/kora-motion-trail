@@ -20,6 +20,25 @@
           </div>
         </div>
       }
+      @if (editorStore.playerMask()) {
+        <div class="mb-3 flex flex-wrap gap-2">
+          <button type="button" (click)="toggleMotionHandles()"
+            class="rounded-lg border px-3 py-2 text-xs"
+            [class]="editingMotion() ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-zinc-700 text-zinc-300'">
+            {{ editingMotion() ? 'Finish Path Editing' : 'Edit Motion Path' }}
+          </button>
+          <button type="button" (click)="toggleBallSelection()"
+            class="rounded-lg border px-3 py-2 text-xs"
+            [class]="selectingBall() ? 'border-amber-400 bg-amber-400/10 text-white' : 'border-zinc-700 text-zinc-300'">
+            {{ selectingBall() ? 'Cancel Ball Selection' : editorStore.ballMask() ? 'Move Ball Selection' : 'Select Ball' }}
+          </button>
+          @if (editingMotion()) {
+            <p class="w-full text-xs text-zinc-400">Drag the cyan handle to change direction and distance; drag the yellow handle to bend the trail. Select Player or Ball in the sidebar.</p>
+          } @else if (selectingBall()) {
+            <p class="w-full text-xs text-amber-300">Click the centre of the ball in the photograph. Adjust its radius in the sidebar.</p>
+          }
+        </div>
+      }
       <div
         class="flex min-h-[320px] min-w-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900/70 p-3 sm:min-h-[450px] sm:p-5"
       >
@@ -38,6 +57,13 @@
               [showMask]="showMask()"
               [processedImage]="editorStore.processedImage()"
               [animationFrame]="animationFrame()"
+              [motionSettings]="editorStore.currentMotionSettings()"
+              [ballSelection]="editorStore.ballSelection()"
+              [selectedSubject]="editorStore.activeSubject()"
+              [selectingBall]="selectingBall()"
+              [editingMotion]="editingMotion()"
+              (ballPicked)="onBallPicked($event)"
+              (motionPathChanged)="onMotionPathChanged($event)"
               [showPlayerControls]="hasAnimationStarted()"
               [isPlaying]="isPlaying()"
               [progress]="animationProgress()"
