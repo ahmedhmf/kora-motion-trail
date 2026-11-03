@@ -28,7 +28,10 @@ export class YoloSegmentationService {
     return (await this.generateSubjectMasks(image)).combined;
   }
 
-  async generateSubjectMasks(image: HTMLImageElement): Promise<SubjectSegmentationMasks> {
+  async generateSubjectMasks(
+    image: HTMLImageElement | HTMLCanvasElement,
+    allowMissingPlayer = false,
+  ): Promise<SubjectSegmentationMasks> {
     const model = await this.loadModel();
     if (model.task !== 'segment') {
       throw new Error(`Expected segmentation model, got: ${model.task}`);
@@ -53,7 +56,7 @@ export class YoloSegmentationService {
       playerOverlay, ballOverlay, playerWidth, playerHeight,
     );
 
-    if (!hasMaskForeground(masks.player)) {
+    if (!allowMissingPlayer && !hasMaskForeground(masks.player)) {
       throw new Error('No player detected. Try another photo or detect again.');
     }
 
@@ -83,7 +86,7 @@ export class YoloSegmentationService {
 
   private toFullResolutionMask(
     bytes: Uint8ClampedArray, width: number, height: number,
-    image: HTMLImageElement,
+    image: HTMLImageElement | HTMLCanvasElement,
   ): HTMLCanvasElement {
     const small = document.createElement('canvas');
     small.width = width;
@@ -95,8 +98,8 @@ export class YoloSegmentationService {
     ctx.putImageData(pixels, 0, 0);
 
     const full = document.createElement('canvas');
-    full.width = image.naturalWidth;
-    full.height = image.naturalHeight;
+    full.width = image instanceof HTMLCanvasElement ? image.width : image.naturalWidth;
+    full.height = image instanceof HTMLCanvasElement ? image.height : image.naturalHeight;
     const fullCtx = full.getContext('2d');
     if (!fullCtx) throw new Error('Could not resize class mask.');
     fullCtx.imageSmoothingEnabled = false;
